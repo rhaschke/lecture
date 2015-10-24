@@ -7,21 +7,27 @@ QuaternionWidget::QuaternionWidget(QWidget *parent) :
 	qRegisterMetaType<Eigen::Quaterniond>("Eigen::Quaterniond");
 
 	_ui->setupUi(this);
+	_q = Eigen::Quaterniond::Identity();
+	updateDisplay();
 }
 
 void QuaternionWidget::setValue(const Eigen::Quaterniond &q)
 {
-	if (!_q.isApprox(q)) {
-		_ui->w->setText(QString::number(q.w()));
-		_ui->x->setText(QString::number(q.x()));
-		_ui->y->setText(QString::number(q.y()));
-		_ui->z->setText(QString::number(q.z()));
-		emit valueChanged(q);
-	}
+	if (q.isApprox(_q)) return;
 	_q = q;
+	updateDisplay();
+	emit valueChanged(q);
 }
 
 const Eigen::Quaterniond &QuaternionWidget::value() const
 {
 	return _q;
+}
+
+
+void QuaternionWidget::updateDisplay() {
+	_ui->w->setText(QString::number(_q.w()));
+	_ui->x->setText(QString::number(_q.x()));
+	_ui->y->setText(QString::number(_q.y()));
+	_ui->z->setText(QString::number(_q.z()));
 }

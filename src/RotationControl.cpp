@@ -27,10 +27,10 @@ RotationControl::RotationControl(QWidget *parent, const QString &title) :
 
 void RotationControl::setValue(const Eigen::Quaterniond &q)
 {
-	if (!_q.isApprox(q)) {
-		_q = q;
-		_qw->setValue(q);
-		_ew->setValue(q);
-		emit valueChanged(q);
-	}
+	if (q.isApprox(_q)) return;
+	_q = q;
+
+	if (!q.isApprox(_qw->value())) _qw->setValue(q);
+	if (!q.isApprox(_ew->value())) _ew->setValue(q);
+	emit valueChanged(q);
 }

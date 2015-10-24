@@ -22,6 +22,9 @@ signals:
 public slots:
 	void setValue(const Eigen::Quaterniond &q);
 
+private slots:
+	void updateDisplay();
+
 private:
 	Eigen::Quaterniond _q;
 	Ui::QuaternionWidget *_ui;

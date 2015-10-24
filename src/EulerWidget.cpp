@@ -29,6 +29,9 @@ EulerWidget::EulerWidget(QWidget *parent) :
 	_ui->a2->setCurrentIndex(1); disableAxis(_ui->a2, 0);
 	_ui->a3->setCurrentIndex(2); disableAxis(_ui->a3, 1);
 
+	_q = Eigen::Quaterniond::Identity();
+	updateAngles();
+
 	// react to axis changes
 	connect(_ui->a1, SIGNAL(currentIndexChanged(int)),
 	        this, SLOT(axisChanged(int)));
@@ -58,51 +61,60 @@ void EulerWidget::getGuiAngles(double e[3]) const {
 	e[2] = angles::from_degrees(_ui->e3->value());
 }
 
-template <typename VectorType>
-void EulerWidget::setGuiAngles(const VectorType &e)
-{
-	_ui->e1->setValue(angles::to_degrees(e[0]));
-	_ui->e2->setValue(angles::to_degrees(e[1]));
-	_ui->e3->setValue(angles::to_degrees(e[2]));
-}
-
 
 void EulerWidget::axisChanged(int axis) {
-	Eigen::Quaterniond old = _q;
+	bool bFirstCall = !this->signalsBlocked();
+	this->blockSignals(true);
 
 	// ensure different axes for consecutive operations
 	QComboBox* origin = dynamic_cast<QComboBox*>(sender());
 	if (origin == _ui->a1) disableAxis(_ui->a2, axis);
 	if (origin == _ui->a2) disableAxis(_ui->a3, axis);
 
-	setValue(old);
+	if (bFirstCall) {
+		updateAngles();
+		this->blockSignals(false);
+	}
 }
 
 void EulerWidget::angleChanged(double angle) {
-	EulerWidget::setValue(value());
+	int a[3]; getGuiAxes(a);
+	double e[3]; getGuiAngles(e);
+	setValue(Eigen::AngleAxisd(e[0], Eigen::Vector3d::Unit(a[0]))
+	      *Eigen::AngleAxisd(e[1], Eigen::Vector3d::Unit(a[1]))
+	      *Eigen::AngleAxisd(e[2], Eigen::Vector3d::Unit(a[2])));
 }
 
 
 void EulerWidget::setValue(const Eigen::Quaterniond &q)
 {
+	if (_q.isApprox(q)) return;
+	_q = q;
+	updateAngles();
+	emit valueChanged(q);
+}
+
+const Eigen::Quaterniond& EulerWidget::value() const
+{
+	return _q;
+}
+
+
+void EulerWidget::updateAngles() {
 	// ensure different axes for consecutive operations
 	int a[3]; getGuiAxes(a);
-	this->blockSignals(true);
-	setGuiAngles(q.matrix().eulerAngles(a[0],a[1],a[2]));
-	this->blockSignals(false);
+	Eigen::Vector3d e = _q.matrix().eulerAngles(a[0], a[1], a[2]);
 
-	if (!_q.isApprox(q)) {
-		emit valueChanged(q);
-	}
-	_q = q;
+	// do not trigger angleChanged()
+	_ui->e1->blockSignals(true);
+	_ui->e2->blockSignals(true);
+	_ui->e3->blockSignals(true);
+
+	_ui->e1->setValue(angles::to_degrees(e[0]));
+	_ui->e2->setValue(angles::to_degrees(e[1]));
+	_ui->e3->setValue(angles::to_degrees(e[2]));
+
+	_ui->e1->blockSignals(false);
+	_ui->e2->blockSignals(false);
+	_ui->e3->blockSignals(false);
 }
-
-const Eigen::Quaterniond EulerWidget::value() const
-{
-	int a[3]; getGuiAxes(a);
-	double e[3]; getGuiAngles(e);
-	return Eigen::AngleAxisd(e[0], Eigen::Vector3d::Unit(a[0]))
-	      *Eigen::AngleAxisd(e[1], Eigen::Vector3d::Unit(a[1]))
-	      *Eigen::AngleAxisd(e[2], Eigen::Vector3d::Unit(a[2]));
-}
-

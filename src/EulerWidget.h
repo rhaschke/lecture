@@ -13,7 +13,7 @@ class EulerWidget : public QWidget
 public:
 	explicit EulerWidget(QWidget *parent = 0);
 
-	const Eigen::Quaterniond value() const;
+	const Eigen::Quaterniond &value() const;
 
 	/// retrieve indices of axes selected in GUI
 	void getGuiAxes(int a[]) const;
@@ -31,9 +31,8 @@ protected slots:
 	void axisChanged(int axis);
 	void angleChanged(double angle);
 
-private:
-	template <typename VectorType>
-	void setGuiAngles(const VectorType &angles);
+private slots:
+	void updateAngles();
 
 private:
 	Eigen::Quaterniond _q;
