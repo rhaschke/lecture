@@ -15,6 +15,7 @@ public:
 signals:
 
 public slots:
+	void updateFrames();
 
 private:
 	void setupUi();
