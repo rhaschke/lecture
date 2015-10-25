@@ -50,6 +50,8 @@ void RotationControl::setValue(const Eigen::Quaterniond &q) {
 	if (!q.isApprox(_ew->value())) _ew->setValue(q);
 
 	updatePose(_q);
+	_server->setPose(_title, _pose);
+	_server->applyChanges();
 
 	emit valueChanged(q);
 }
@@ -122,5 +124,11 @@ void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos,
 	ctrl.markers.push_back(createBoxMarker(3*s, 2*s, 1*s, color));
 	imarker.controls.push_back(ctrl);
 
-	_server->insert(imarker);
+	_server->insert(imarker, boost::bind(&RotationControl::processFeedback, this, _1));
+}
+
+void RotationControl::processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback)
+{
+	const geometry_msgs::Quaternion &q = feedback->pose.orientation;
+	setValue(Eigen::Quaterniond(q.w, q.x, q.y, q.z));
 }
