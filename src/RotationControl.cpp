@@ -16,4 +16,21 @@ RotationControl::RotationControl(QWidget *parent, const QString &title) :
 	layout->addWidget(_qw);
 	layout->addWidget(_ew);
 	this->setLayout(layout);
+
+	setValue(Eigen::Quaterniond::Identity());
+
+	connect(_qw, SIGNAL(valueChanged(Eigen::Quaterniond)),
+	        this, SLOT(setValue(Eigen::Quaterniond)));
+	connect(_ew, SIGNAL(valueChanged(Eigen::Quaterniond)),
+	        this, SLOT(setValue(Eigen::Quaterniond)));
+}
+
+void RotationControl::setValue(const Eigen::Quaterniond &q)
+{
+	if (!_q.isApprox(q)) {
+		_q = q;
+		_qw->setValue(q);
+		_ew->setValue(q);
+		emit valueChanged(q);
+	}
 }

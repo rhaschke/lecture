@@ -40,7 +40,8 @@ source /opt/ros/indigo/setup.bash
 [[https://catkin-tools.readthedocs.org/en/latest/verbs/catkin_config.html][catkin config --init]]
 mkdir src
 cd src
-[[https://catkin-tools.readthedocs.org/en/latest/verbs/catkin_create.html][catkin create pkg <name>]]
+[[https://catkin-tools.readthedocs.org/en/latest/verbs/catkin_create.html][catkin create pkg lecture]]
+git clone https://github.com/rhaschke/lecture
 cd lecture
 catkin build
 
@@ -50,3 +51,13 @@ catkin build
   - defines dependencies: build, test, run
   - author, license, package information
 - CMakeLists.txt
+
+** example ros session
+source ~/ros/devel/setup.bash
+roscore &
+rostopic list
+rostopic pub -r 1 chatter std_msgs/String "Hello World" &
+rostopic echo chatter
+
+rosrun roscpp_tutorials talker chatter:=foobar
+rosrun roscpp_tutorials listener chatter:=foobar
