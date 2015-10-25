@@ -1,17 +1,21 @@
 #pragma once
 
-#include <QWidget>
+#include <QGroupBox>
 #include <Eigen/Geometry>
+#include <interactive_markers/interactive_marker_server.h>
+#include <visualization_msgs/InteractiveMarkerFeedback.h>
 
 class QuaternionWidget;
 class EulerWidget;
 
-class RotationControl : public QWidget
+class RotationControl : public QGroupBox
 {
 	Q_OBJECT
 public:
-	explicit RotationControl(QWidget *parent = 0,
-	                         const QString &title="");
+	explicit RotationControl(const std::string &_title,
+	                         const Eigen::Vector3d &position,
+	                         boost::shared_ptr<interactive_markers::InteractiveMarkerServer> &_server,
+	                         QWidget *parent = 0);
 
 	const Eigen::Quaterniond& value() const;
 	const Eigen::Vector3d eulerAngles() const;
@@ -27,8 +31,16 @@ public slots:
 	void setEulerAngles(double e1, double e2, double e3);
 	void setEulerAxes(uint a1, uint a2, uint a3);
 
-public:
-	Eigen::Quaterniond _q;
+private:
+	void setupUi();
+	void createInteractiveMarker(const Eigen::Vector3d &position);
+	void updatePose(const Eigen::Quaterniond &q);
+
+private:
+	Eigen::Quaterniond  _q;
+	boost::shared_ptr<interactive_markers::InteractiveMarkerServer> _server;
+	std::string         _title;
+	geometry_msgs::Pose _pose;
 
 	QuaternionWidget *_qw;
 	EulerWidget      *_ew;

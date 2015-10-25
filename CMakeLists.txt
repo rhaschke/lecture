@@ -4,7 +4,7 @@ project(lecture)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp)
+find_package(catkin REQUIRED roscpp interactive_markers)
 find_package(Qt5 REQUIRED COMPONENTS Widgets)
 find_package(cmake_modules REQUIRED)
 find_package(Eigen REQUIRED)

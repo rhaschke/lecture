@@ -35,6 +35,7 @@
   <!-- Use build_depend for packages required at compile time: -->
   <build_depend>cmake_modules</build_depend>
   <build_depend>roscpp</build_depend>
+  <build_depend>interactive_markers</build_depend>
 
   <!-- Use run_depend for packages you need at runtime: -->
   <run_depend>roscpp</run_depend>
