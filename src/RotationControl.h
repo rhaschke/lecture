@@ -14,6 +14,7 @@ class RotationControl : public QGroupBox
 public:
 	explicit RotationControl(const std::string &_title,
 	                         const Eigen::Vector3d &position,
+	                         const QColor &color,
 	                         boost::shared_ptr<interactive_markers::InteractiveMarkerServer> &_server,
 	                         QWidget *parent = 0);
 
@@ -33,7 +34,7 @@ public slots:
 
 private:
 	void setupUi();
-	void createInteractiveMarker(const Eigen::Vector3d &position);
+	void createInteractiveMarker(const Eigen::Vector3d &position, const QColor &color);
 	void updatePose(const Eigen::Quaterniond &q);
 
 private:

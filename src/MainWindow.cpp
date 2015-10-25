@@ -24,10 +24,11 @@ void MainWindow::setupUi() {
 	QWidget *central = new QWidget(this);
 
 	double s = 0.5;
-	frame1 = new RotationControl("frame 1", Eigen::Vector3d(-s,s,0), server, this);
-	frame2 = new RotationControl("frame 2", Eigen::Vector3d( s,s,0), server, this);
-	frame1p2 = new RotationControl("frame 1+2", Eigen::Vector3d(-s,-s,0), server, this);
-	frame1c2 = new RotationControl("frame 1*2", Eigen::Vector3d( s,-s,0), server, this);
+	QColor grey("grey"), red("red"), green("green");
+	frame1 = new RotationControl("frame 1", Eigen::Vector3d(-s,s,0), grey, server, this);
+	frame2 = new RotationControl("frame 2", Eigen::Vector3d( s,s,0), grey, server, this);
+	frame1p2 = new RotationControl("frame 1+2", Eigen::Vector3d(-s,-s,0), red, server, this);
+	frame1c2 = new RotationControl("frame 1*2", Eigen::Vector3d( s,-s,0), green, server, this);
 
 	QVBoxLayout *layout = new QVBoxLayout(central);
 	layout->addWidget(frame1);

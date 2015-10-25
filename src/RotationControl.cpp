@@ -7,7 +7,7 @@
 #include <visualization_msgs/InteractiveMarkerFeedback.h>
 
 RotationControl::RotationControl(const std::string &title,
-                                 const Eigen::Vector3d &position,
+                                 const Eigen::Vector3d &position, const QColor &color,
                                  boost::shared_ptr<interactive_markers::InteractiveMarkerServer> &server,
                                  QWidget *parent) :
    QGroupBox(QString::fromStdString(title), parent), _server(server), _title(title)
@@ -15,7 +15,7 @@ RotationControl::RotationControl(const std::string &title,
 	qRegisterMetaType<Eigen::Quaterniond>("Eigen::Quaterniond");
 
 	setupUi();
-	createInteractiveMarker(position);
+	createInteractiveMarker(position, color);
 }
 
 void RotationControl::setupUi() {
@@ -104,7 +104,8 @@ static visualization_msgs::Marker createBoxMarker(double x, double y, double z,
 	return marker;
 }
 
-void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos) {
+void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos,
+                                              const QColor &color) {
 	_pose.position.x = pos[0];
 	_pose.position.y = pos[1];
 	_pose.position.z = pos[2];
@@ -118,7 +119,7 @@ void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos) {
 	float s = imarker.scale = 0.2;
 
 	visualization_msgs::InteractiveMarkerControl ctrl = createViewPlaneControl();
-	ctrl.markers.push_back(createBoxMarker(3*s, 2*s, 1*s, QColor("grey")));
+	ctrl.markers.push_back(createBoxMarker(3*s, 2*s, 1*s, color));
 	imarker.controls.push_back(ctrl);
 
 	_server->insert(imarker);
