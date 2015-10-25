@@ -7,6 +7,8 @@
 RotationControl::RotationControl(QWidget *parent, const QString &title) :
    QWidget(parent)
 {
+	qRegisterMetaType<Eigen::Quaterniond>("Eigen::Quaterniond");
+
 	_qw = new QuaternionWidget(parent);
 	_ew = new EulerWidget(parent);
 

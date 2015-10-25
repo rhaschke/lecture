@@ -25,7 +25,17 @@
     </widget>
    </item>
    <item>
-    <widget class="QDoubleSpinBox" name="e1"/>
+    <widget class="QDoubleSpinBox" name="e1">
+     <property name="decimals">
+      <number>1</number>
+     </property>
+     <property name="minimum">
+      <double>-360.000000000000000</double>
+     </property>
+     <property name="maximum">
+      <double>360.000000000000000</double>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QComboBox" name="a2">
@@ -38,7 +48,17 @@
     </widget>
    </item>
    <item>
-    <widget class="QDoubleSpinBox" name="e2"/>
+    <widget class="QDoubleSpinBox" name="e2">
+     <property name="decimals">
+      <number>1</number>
+     </property>
+     <property name="minimum">
+      <double>-360.000000000000000</double>
+     </property>
+     <property name="maximum">
+      <double>360.000000000000000</double>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QComboBox" name="a3">
@@ -51,7 +71,17 @@
     </widget>
    </item>
    <item>
-    <widget class="QDoubleSpinBox" name="e3"/>
+    <widget class="QDoubleSpinBox" name="e3">
+     <property name="decimals">
+      <number>1</number>
+     </property>
+     <property name="minimum">
+      <double>-360.000000000000000</double>
+     </property>
+     <property name="maximum">
+      <double>360.000000000000000</double>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
