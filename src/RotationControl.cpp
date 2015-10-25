@@ -23,6 +23,8 @@ RotationControl::RotationControl(QWidget *parent, const QString &title) :
 	        this, SLOT(setValue(Eigen::Quaterniond)));
 	connect(_ew, SIGNAL(valueChanged(Eigen::Quaterniond)),
 	        this, SLOT(setValue(Eigen::Quaterniond)));
+	connect(_ew, SIGNAL(axesChanged(uint,uint,uint)),
+	        this, SIGNAL(axesChanged(uint,uint,uint)));
 }
 
 
@@ -39,6 +41,9 @@ void RotationControl::setValue(const Eigen::Quaterniond &q) {
 	emit valueChanged(q);
 }
 
+void RotationControl::setEulerAxes(uint a1, uint a2, uint a3) {
+	_ew->setEulerAxes(a1, a2, a3);
+}
 
 const Eigen::Vector3d RotationControl::eulerAngles() const {
 	Eigen::Vector3d result;

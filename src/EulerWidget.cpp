@@ -49,7 +49,7 @@ EulerWidget::EulerWidget(QWidget *parent) :
 	        this, SLOT(angleChanged(double)));
 }
 
-void EulerWidget::getGuiAxes(int a[3]) const {
+void EulerWidget::getGuiAxes(uint a[]) const {
 	a[0] = _ui->a1->currentIndex();
 	a[1] = _ui->a2->currentIndex();
 	a[2] = _ui->a3->currentIndex();
@@ -74,6 +74,10 @@ void EulerWidget::axisChanged(int axis) {
 	if (bFirstCall) {
 		updateAngles();
 		this->blockSignals(false);
+
+		emit axesChanged(_ui->a1->currentIndex(),
+		                 _ui->a2->currentIndex(),
+		                 _ui->a3->currentIndex());
 	}
 }
 
@@ -83,10 +87,27 @@ void EulerWidget::angleChanged(double angle) {
 }
 
 void EulerWidget::setEulerAngles(double e1, double e2, double e3) {
-	int a[3]; getGuiAxes(a);
+	uint a[3]; getGuiAxes(a);
 	setValue(Eigen::AngleAxisd(e1, Eigen::Vector3d::Unit(a[0]))
-	         * Eigen::AngleAxisd(e2, Eigen::Vector3d::Unit(a[1]))
-	         * Eigen::AngleAxisd(e3, Eigen::Vector3d::Unit(a[2])));
+	       * Eigen::AngleAxisd(e2, Eigen::Vector3d::Unit(a[1]))
+	       * Eigen::AngleAxisd(e3, Eigen::Vector3d::Unit(a[2])));
+}
+
+void EulerWidget::setEulerAxes(uint a1, uint a2, uint a3)
+{
+	if (a1 > 2 || a2 > 2 || a3 > 2) return;
+	if (a1 == _ui->a1->currentIndex() &&
+	    a2 == _ui->a2->currentIndex() &&
+	    a3 == _ui->a3->currentIndex()) return;
+
+	this->blockSignals(true);
+	_ui->a3->setCurrentIndex(a3);
+	_ui->a2->setCurrentIndex(a2);
+	_ui->a1->setCurrentIndex(a1);
+	this->blockSignals(false);
+	updateAngles();
+
+	emit axesChanged(a1, a2, a3);
 }
 
 
@@ -104,7 +125,7 @@ const Eigen::Quaterniond& EulerWidget::value() const {
 
 void EulerWidget::updateAngles() {
 	// ensure different axes for consecutive operations
-	int a[3]; getGuiAxes(a);
+	uint a[3]; getGuiAxes(a);
 	Eigen::Vector3d e = _q.matrix().eulerAngles(a[0], a[1], a[2]);
 
 	// do not trigger angleChanged()
