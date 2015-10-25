@@ -35,7 +35,6 @@ public slots:
 private:
 	void setupUi();
 	void createInteractiveMarker(const Eigen::Vector3d &position, const QColor &color);
-	void updatePose(const Eigen::Quaterniond &q);
 	void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr&);
 
 private:

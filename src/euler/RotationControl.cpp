@@ -6,6 +6,15 @@
 #include <visualization_msgs/InteractiveMarker.h>
 #include <visualization_msgs/InteractiveMarkerFeedback.h>
 
+static void updatePose(geometry_msgs::Pose &pose,
+                       const Eigen::Quaterniond &q) {
+	pose.orientation.w = q.w();
+	pose.orientation.x = q.x();
+	pose.orientation.y = q.y();
+	pose.orientation.z = q.z();
+}
+
+
 RotationControl::RotationControl(const std::string &title,
                                  const Eigen::Vector3d &position, const QColor &color,
                                  boost::shared_ptr<interactive_markers::InteractiveMarkerServer> &server,
@@ -54,7 +63,7 @@ void RotationControl::setValue(const Eigen::Quaterniond &q, bool update_server) 
 	_ew->blockSignals(false);
 
 	if (_server && update_server) {
-		updatePose(q);
+		updatePose(_pose, q);
 		_server->setPose(_title, _pose);
 		_server->applyChanges();
 	}
@@ -77,12 +86,6 @@ void RotationControl::setEulerAngles(double e1, double e2, double e3) {
 	_ew->setEulerAngles(e1, e2, e3, true);
 }
 
-void RotationControl::updatePose(const Eigen::Quaterniond &q) {
-	_pose.orientation.w = q.w();
-	_pose.orientation.x = q.x();
-	_pose.orientation.y = q.y();
-	_pose.orientation.z = q.z();
-}
 
 static visualization_msgs::InteractiveMarkerControl createViewPlaneControl() {
 	visualization_msgs::InteractiveMarkerControl control;
@@ -112,6 +115,27 @@ static visualization_msgs::Marker createBoxMarker(double x, double y, double z,
 	return marker;
 }
 
+static visualization_msgs::Marker createArrowMarker(double scale,
+                                                    const Eigen::Vector3d &dir,
+                                                    const QColor &color) {
+	visualization_msgs::Marker marker;
+
+	marker.type = visualization_msgs::Marker::ARROW;
+	marker.scale.x = scale;
+	marker.scale.y = 0.1*scale;
+	marker.scale.z = 0.1*scale;
+
+	updatePose(marker.pose,
+	           Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitX(), dir));
+
+	marker.color.r = color.redF();
+	marker.color.g = color.greenF();
+	marker.color.b = color.blueF();
+	marker.color.a = color.alphaF();
+
+	return marker;
+}
+
 void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos,
                                               const QColor &color) {
 	if (!_server) return;
@@ -119,7 +143,7 @@ void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos,
 	_pose.position.x = pos[0];
 	_pose.position.y = pos[1];
 	_pose.position.z = pos[2];
-	updatePose(_q);
+	updatePose(_pose, _q);
 
 	visualization_msgs::InteractiveMarker imarker;
 	imarker.header.frame_id = "world";
@@ -130,6 +154,9 @@ void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos,
 
 	visualization_msgs::InteractiveMarkerControl ctrl = createViewPlaneControl();
 	ctrl.markers.push_back(createBoxMarker(3*s, 2*s, 1*s, color));
+	ctrl.markers.push_back(createArrowMarker(3*s, Eigen::Vector3d::UnitX(), QColor("red")));
+	ctrl.markers.push_back(createArrowMarker(3*s, Eigen::Vector3d::UnitY(), QColor("green")));
+	ctrl.markers.push_back(createArrowMarker(3*s, Eigen::Vector3d::UnitZ(), QColor("blue")));
 	imarker.controls.push_back(ctrl);
 
 	_server->insert(imarker, boost::bind(&RotationControl::processFeedback, this, _1));
