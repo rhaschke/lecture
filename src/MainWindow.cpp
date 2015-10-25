@@ -20,6 +20,13 @@ MainWindow::~MainWindow()
 	spinner.stop();
 }
 
+static void linkAxes(RotationControl *f1, RotationControl *f2) {
+	QObject::connect(f1, SIGNAL(axesChanged(uint,uint,uint)),
+	                 f2, SLOT(setEulerAxes(uint,uint,uint)));
+	QObject::connect(f2, SIGNAL(axesChanged(uint,uint,uint)),
+	                 f1, SLOT(setEulerAxes(uint,uint,uint)));
+}
+
 void MainWindow::setupUi() {
 	QWidget *central = new QWidget(this);
 
@@ -37,4 +44,8 @@ void MainWindow::setupUi() {
 	layout->addWidget(frame1c2);
 
 	this->setCentralWidget(central);
+
+	linkAxes(frame1, frame2);
+	linkAxes(frame1, frame1p2);
+	linkAxes(frame1, frame1c2);
 }
