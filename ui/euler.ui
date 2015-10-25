@@ -145,6 +145,14 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>a1</tabstop>
+  <tabstop>a2</tabstop>
+  <tabstop>a3</tabstop>
+  <tabstop>e1</tabstop>
+  <tabstop>e2</tabstop>
+  <tabstop>e3</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
