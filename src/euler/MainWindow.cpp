@@ -56,4 +56,18 @@ void MainWindow::setupUi() {
 	linkAxes(frame1, frame2);
 	linkAxes(frame1, frame1p2);
 	linkAxes(frame1, frame1c2);
+
+	frame1p2->setDisabled(true);
+	frame1c2->setDisabled(true);
+	connect(frame1, SIGNAL(valueChanged(Eigen::Quaterniond)), this, SLOT(updateFrames()));
+	connect(frame2, SIGNAL(valueChanged(Eigen::Quaterniond)), this, SLOT(updateFrames()));
+}
+
+void MainWindow::updateFrames()
+{
+	Eigen::Quaterniond q = frame2->value() * frame1->value();
+	frame1c2->setValue(q);
+
+	Eigen::Vector3d e = frame1->eulerAngles() + frame2->eulerAngles();
+	frame1p2->setEulerAngles(e[0], e[1], e[2]);
 }
