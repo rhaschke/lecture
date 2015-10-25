@@ -78,24 +78,26 @@ void EulerWidget::axisChanged(int axis) {
 }
 
 void EulerWidget::angleChanged(double angle) {
-	int a[3]; getGuiAxes(a);
 	double e[3]; getGuiAngles(e);
-	setValue(Eigen::AngleAxisd(e[0], Eigen::Vector3d::Unit(a[0]))
-	      *Eigen::AngleAxisd(e[1], Eigen::Vector3d::Unit(a[1]))
-	      *Eigen::AngleAxisd(e[2], Eigen::Vector3d::Unit(a[2])));
+	setEulerAngles(e[0], e[1], e[2]);
+}
+
+void EulerWidget::setEulerAngles(double e1, double e2, double e3) {
+	int a[3]; getGuiAxes(a);
+	setValue(Eigen::AngleAxisd(e1, Eigen::Vector3d::Unit(a[0]))
+	         * Eigen::AngleAxisd(e2, Eigen::Vector3d::Unit(a[1]))
+	         * Eigen::AngleAxisd(e3, Eigen::Vector3d::Unit(a[2])));
 }
 
 
-void EulerWidget::setValue(const Eigen::Quaterniond &q)
-{
+void EulerWidget::setValue(const Eigen::Quaterniond &q) {
 	if (_q.isApprox(q)) return;
 	_q = q;
 	updateAngles();
 	emit valueChanged(q);
 }
 
-const Eigen::Quaterniond& EulerWidget::value() const
-{
+const Eigen::Quaterniond& EulerWidget::value() const {
 	return _q;
 }
 

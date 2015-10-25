@@ -26,6 +26,7 @@ signals:
 
 public slots:
 	void setValue(const Eigen::Quaterniond &q);
+	void setEulerAngles(double e1, double e2, double e3);
 
 protected slots:
 	void axisChanged(int axis);

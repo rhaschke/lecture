@@ -14,12 +14,14 @@ public:
 	                         const QString &title="");
 
 	const Eigen::Quaterniond& value() const;
+	const Eigen::Vector3d eulerAngles() const;
 
 signals:
 	void valueChanged(const Eigen::Quaterniond &q);
 
 public slots:
 	void setValue(const Eigen::Quaterniond &q);
+	void setEulerAngles(double e1, double e2, double e3);
 
 public:
 	Eigen::Quaterniond _q;

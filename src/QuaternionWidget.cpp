@@ -2,8 +2,7 @@
 #include "ui_quaternion.h"
 
 QuaternionWidget::QuaternionWidget(QWidget *parent) :
-   QWidget(parent), _ui(new Ui::QuaternionWidget)
-{
+   QWidget(parent), _ui(new Ui::QuaternionWidget) {
 	qRegisterMetaType<Eigen::Quaterniond>("Eigen::Quaterniond");
 
 	_ui->setupUi(this);
@@ -11,16 +10,14 @@ QuaternionWidget::QuaternionWidget(QWidget *parent) :
 	updateDisplay();
 }
 
-void QuaternionWidget::setValue(const Eigen::Quaterniond &q)
-{
+void QuaternionWidget::setValue(const Eigen::Quaterniond &q) {
 	if (q.isApprox(_q)) return;
 	_q = q;
 	updateDisplay();
 	emit valueChanged(q);
 }
 
-const Eigen::Quaterniond &QuaternionWidget::value() const
-{
+const Eigen::Quaterniond &QuaternionWidget::value() const {
 	return _q;
 }
 

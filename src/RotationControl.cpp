@@ -25,12 +25,27 @@ RotationControl::RotationControl(QWidget *parent, const QString &title) :
 	        this, SLOT(setValue(Eigen::Quaterniond)));
 }
 
-void RotationControl::setValue(const Eigen::Quaterniond &q)
-{
+
+const Eigen::Quaterniond &RotationControl::value() const {
+	return _q;
+}
+
+void RotationControl::setValue(const Eigen::Quaterniond &q) {
 	if (q.isApprox(_q)) return;
 	_q = q;
 
 	if (!q.isApprox(_qw->value())) _qw->setValue(q);
 	if (!q.isApprox(_ew->value())) _ew->setValue(q);
 	emit valueChanged(q);
+}
+
+
+const Eigen::Vector3d RotationControl::eulerAngles() const {
+	Eigen::Vector3d result;
+	_ew->getGuiAngles(result.data());
+	return result;
+}
+
+void RotationControl::setEulerAngles(double e1, double e2, double e3) {
+	_ew->setEulerAngles(e1, e2, e3);
 }
