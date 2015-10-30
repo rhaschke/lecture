@@ -1,0 +1,4 @@
+<launch>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find lecture)/launch/euler.rviz"/>
+  <node name="euler" pkg="lecture" type="euler" />
+</launch>
