@@ -116,40 +116,10 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}")
 
-QT5_WRAP_UI(UI_SOURCES
-   ui/euler.ui
-   ui/quaternion.ui
-)
-
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(${EIGEN_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS})
-
-## Declare a C++ library
-# add_library(lecture
-#   src/${PROJECT_NAME}/lecture.cpp
-# )
-
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(lecture ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Declare a C++ executable
-add_executable(euler
-   src/main.cpp
-   src/MainWindow.cpp
-   src/EulerWidget.cpp
-   src/QuaternionWidget.cpp
-   src/RotationControl.cpp
-   ${UI_SOURCES})
-
-## Add cmake target dependencies of the executable
-## same as for the library above
-add_dependencies(euler ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
-target_link_libraries(euler ${catkin_LIBRARIES} ${Qt5Widgets_LIBRARIES})
+#############
+## sub dir ##
+#############
+add_subdirectory(src)
 
 #############
 ## Install ##
