@@ -1,0 +1,20 @@
+<launch>
+	<!-- load robot_description -->
+	<param name="robot_description" command="$(find xacro)/xacro '$(find pa10_7c_description)/robots/pa10_7c_arm.urdf.xacro'"/>
+
+	<!-- publish joint values, open gui if use_gui=True -->
+<!-- joints are published by ikkdl
+	<node name="joint_publisher" 
+	      pkg="joint_state_publisher" type="joint_state_publisher">
+		<param name="use_gui" value="True"/>
+	</node>
+-->
+	<!-- publish transforms of all robot links -->
+	<node name="state_publisher" 
+	      pkg="robot_state_publisher" type="robot_state_publisher">
+		<param name="publish_frequency" type="double" value="10.0"/>
+	</node>
+
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find lecture)/launch/ikkdl.rviz"/>
+	<node name="ikkdl" pkg="lecture" type="ikkdl" />
+</launch>
