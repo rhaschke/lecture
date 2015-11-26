@@ -15,6 +15,7 @@
 #include <kdl/jntarray.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/chainiksolvervel_pinv_nso.hpp>
 #include <kdl/chainiksolvervel_pinv.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
@@ -243,14 +244,25 @@ int main(int argc, char *argv[]) {
 	marker_feedback.pose = stamped.pose;
 
 	KDL::JntArray joints(kdl_chain.getNrOfJoints());
+	KDL::JntArray qDot(kdl_chain.getNrOfJoints());
+	KDL::Frame target;
+
+//	KDL::ChainIkSolverVel_pinv ik(kdl_chain);
+	KDL::JntArray relaxed_posture = KDL::JntArray(kdl_chain.getNrOfJoints());
+	KDL::ChainIkSolverVel_pinv_nso ik(kdl_chain,kdl_joints,relaxed_posture,0.0001);
 
 	// run controller
 	rclcpp::Rate rate(50); // 50 hz update rate
 	while (rclcpp::ok())
 	{
 		// TODO: compute twist that moves current end-effector pose into target pose
+		tf2::fromMsg(marker_feedback.pose, target);
+		fk.JntToCart(joints, kdl_pose);
+		KDL::Twist twist = 0.1 * KDL::diff(kdl_pose,target);
 
 		// TODO: perform inverse velocity kinematics
+		ik.CartToJnt(joints, twist, qDot);
+		KDL::Add(joints, qDot, joints);
 
 		// fill + publish ros joint_state message
 		update_message(js_msg, joints);
