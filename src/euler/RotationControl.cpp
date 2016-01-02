@@ -44,12 +44,13 @@ const Eigen::Quaterniond &RotationControl::value() const {
 
 void RotationControl::setValue(const Eigen::Quaterniond &q) {
 	if (q.isApprox(_q)) return;
+	double dot = std::abs(_q.dot(q));
 	_q = q;
 
 	if (!q.isApprox(_qw->value())) _qw->setValue(q);
-	if (!q.isApprox(_ew->value())) _ew->setValue(q);
+	if (!Eigen::internal::isApprox(dot, 1.)) _ew->setValue(q);
 
-	updatePose(_q);
+	updatePose(q);
 	_server->setPose(_title, _pose);
 	_server->applyChanges();
 
