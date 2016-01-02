@@ -68,7 +68,7 @@ const Eigen::Vector3d RotationControl::eulerAngles() const {
 }
 
 void RotationControl::setEulerAngles(double e1, double e2, double e3) {
-	_ew->setEulerAngles(e1, e2, e3);
+	_ew->setEulerAngles(e1, e2, e3, true);
 }
 
 void RotationControl::updatePose(const Eigen::Quaterniond &q) {

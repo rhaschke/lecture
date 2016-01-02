@@ -30,7 +30,7 @@ signals:
 
 public slots:
 	void setValue(const Eigen::Quaterniond &q);
-	void setEulerAngles(double e1, double e2, double e3);
+	void setEulerAngles(double e1, double e2, double e3, bool normalize);
 	void setEulerAxes(uint a1, uint a2, uint a3);
 
 protected slots:

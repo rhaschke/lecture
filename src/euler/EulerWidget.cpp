@@ -83,14 +83,35 @@ void EulerWidget::axisChanged(int axis) {
 
 void EulerWidget::angleChanged(double angle) {
 	double e[3]; getGuiAngles(e);
-	setEulerAngles(e[0], e[1], e[2]);
+	setEulerAngles(e[0], e[1], e[2], false);
 }
 
-void EulerWidget::setEulerAngles(double e1, double e2, double e3) {
+void EulerWidget::setEulerAngles(double e1, double e2, double e3, bool normalize) {
 	uint a[3]; getGuiAxes(a);
-	setValue(Eigen::AngleAxisd(e1, Eigen::Vector3d::Unit(a[0]))
-	       * Eigen::AngleAxisd(e2, Eigen::Vector3d::Unit(a[1]))
-	       * Eigen::AngleAxisd(e3, Eigen::Vector3d::Unit(a[2])));
+	Eigen::Quaterniond q =
+	      Eigen::AngleAxisd(e1, Eigen::Vector3d::Unit(a[0])) *
+	      Eigen::AngleAxisd(e2, Eigen::Vector3d::Unit(a[1])) *
+	      Eigen::AngleAxisd(e3, Eigen::Vector3d::Unit(a[2]));
+	if (normalize)
+		setValue(q);
+	else {
+		// do not trigger angleChanged() again
+		_ui->e1->blockSignals(true);
+		_ui->e2->blockSignals(true);
+		_ui->e3->blockSignals(true);
+
+		_ui->e1->setValue(angles::to_degrees(e1));
+		_ui->e2->setValue(angles::to_degrees(e2));
+		_ui->e3->setValue(angles::to_degrees(e3));
+
+		_ui->e1->blockSignals(false);
+		_ui->e2->blockSignals(false);
+		_ui->e3->blockSignals(false);
+
+		if (_q.isApprox(q)) return;
+		_q = q;
+		emit valueChanged(q);
+	}
 }
 
 void EulerWidget::setEulerAxes(uint a1, uint a2, uint a3)
@@ -127,17 +148,5 @@ void EulerWidget::updateAngles() {
 	// ensure different axes for consecutive operations
 	uint a[3]; getGuiAxes(a);
 	Eigen::Vector3d e = _q.matrix().eulerAngles(a[0], a[1], a[2]);
-
-	// do not trigger angleChanged()
-	_ui->e1->blockSignals(true);
-	_ui->e2->blockSignals(true);
-	_ui->e3->blockSignals(true);
-
-	_ui->e1->setValue(angles::to_degrees(e[0]));
-	_ui->e2->setValue(angles::to_degrees(e[1]));
-	_ui->e3->setValue(angles::to_degrees(e[2]));
-
-	_ui->e1->blockSignals(false);
-	_ui->e2->blockSignals(false);
-	_ui->e3->blockSignals(false);
+	setEulerAngles(e[0], e[1], e[2], false);
 }
