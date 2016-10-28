@@ -133,7 +133,9 @@ void EulerWidget::setEulerAxes(uint a1, uint a2, uint a3)
 
 
 void EulerWidget::setValue(const Eigen::Quaterniond &q) {
-	if (_q.isApprox(q)) return;
+	if (_q.isApprox(q, 1e-5)) return;
+	if (std::abs(_q.dot(q)) > 1.-1e-5) return; // don't care for q / -q
+
 	_q = q;
 	updateAngles();
 	emit valueChanged(q);

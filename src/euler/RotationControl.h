@@ -28,7 +28,7 @@ signals:
 	void axesChanged(uint a1, uint a2, uint a3);
 
 public slots:
-	void setValue(const Eigen::Quaterniond &q);
+	void setValue(const Eigen::Quaterniond &q, bool update_server=true);
 	void setEulerAngles(double e1, double e2, double e3);
 	void setEulerAxes(uint a1, uint a2, uint a3);
 

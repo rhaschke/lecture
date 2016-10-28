@@ -42,17 +42,20 @@ const Eigen::Quaterniond &RotationControl::value() const {
 	return _q;
 }
 
-void RotationControl::setValue(const Eigen::Quaterniond &q) {
-	if (q.isApprox(_q)) return;
-	double dot = std::abs(_q.dot(q));
+void RotationControl::setValue(const Eigen::Quaterniond &q, bool update_server) {
+	if (q.isApprox(_q, 1e-5)) return;
 	_q = q;
 
-	if (!q.isApprox(_qw->value())) _qw->setValue(q);
-	if (!Eigen::internal::isApprox(dot, 1.)) _ew->setValue(q);
+	this->blockSignals(true);
+	_qw->setValue(q);
+	_ew->setValue(q);
+	this->blockSignals(false);
 
-	updatePose(q);
-	_server->setPose(_title, _pose);
-	_server->applyChanges();
+	if (_server && update_server) {
+		updatePose(q);
+		_server->setPose(_title, _pose);
+		_server->applyChanges();
+	}
 
 	emit valueChanged(q);
 }
@@ -109,6 +112,8 @@ static visualization_msgs::Marker createBoxMarker(double x, double y, double z,
 
 void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos,
                                               const QColor &color) {
+	if (!_server) return;
+
 	_pose.position.x = pos[0];
 	_pose.position.y = pos[1];
 	_pose.position.z = pos[2];
@@ -131,5 +136,5 @@ void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos,
 void RotationControl::processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback)
 {
 	const geometry_msgs::Quaternion &q = feedback->pose.orientation;
-	setValue(Eigen::Quaterniond(q.w, q.x, q.y, q.z));
+	setValue(Eigen::Quaterniond(q.w, q.x, q.y, q.z), false);
 }
