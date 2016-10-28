@@ -1,13 +1,13 @@
-add_subdirectory(euler)
-
 find_package(catkin REQUIRED COMPONENTS interactive_markers kdl_parser tf_conversions)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(${EIGEN_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
 
 ## enable c++11
 add_definitions(-std=c++11)
+
+add_subdirectory(euler)
 
 ## Declare a C++ executable
 add_executable(ikkdl ikkdl.cpp)

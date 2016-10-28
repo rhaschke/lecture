@@ -5,7 +5,7 @@ QT5_WRAP_UI(UI_SOURCES
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(${EIGEN_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS})
+include_directories(${Qt5Widgets_INCLUDE_DIRS})
 
 ## Declare a C++ executable
 add_executable(euler

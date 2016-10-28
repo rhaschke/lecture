@@ -34,7 +34,7 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <!-- Use build_depend for packages required at compile time: -->
-  <build_depend>cmake_modules</build_depend>
+  <build_depend>eigen</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>interactive_markers</build_depend>
 
