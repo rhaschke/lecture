@@ -43,13 +43,15 @@ const Eigen::Quaterniond &RotationControl::value() const {
 }
 
 void RotationControl::setValue(const Eigen::Quaterniond &q, bool update_server) {
-	if (q.isApprox(_q, 1e-5)) return;
+	if (q.isApprox(_q)) return;
 	_q = q;
 
-	this->blockSignals(true);
+	_qw->blockSignals(true);
+	_ew->blockSignals(true);
 	_qw->setValue(q);
 	_ew->setValue(q);
-	this->blockSignals(false);
+	_qw->blockSignals(false);
+	_ew->blockSignals(false);
 
 	if (_server && update_server) {
 		updatePose(q);

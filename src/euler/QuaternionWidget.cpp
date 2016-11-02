@@ -11,7 +11,7 @@ QuaternionWidget::QuaternionWidget(QWidget *parent) :
 }
 
 void QuaternionWidget::setValue(const Eigen::Quaterniond &q) {
-	if (q.isApprox(_q, 1e-5)) return;
+	if (q.isApprox(_q)) return;
 	_q = q;
 	updateDisplay();
 	emit valueChanged(q);
