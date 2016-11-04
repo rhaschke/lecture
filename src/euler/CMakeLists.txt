@@ -10,6 +10,7 @@ add_executable(euler
    EulerWidget.cpp
    QuaternionWidget.cpp
    RotationControl.cpp
+   Interpolation.cpp
    ${UI_SOURCES}
 )
 
