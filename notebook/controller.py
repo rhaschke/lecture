@@ -72,6 +72,9 @@ class MyInteractiveMarkerServer(InteractiveMarkerServer):
 
 
 class Controller(object):
+    damping = 0.1
+    threshold = 0.1
+
     def __init__(self, pose=TransformStamped(header=Header(frame_id='panda_link8'), child_frame_id='target',
                                              transform=Transform(rotation=Quaternion(*tf.quaternion_about_axis(numpy.pi/4, [0, 0, 1])),
                                                                  translation=Vector3(0, 0, 0.105)))):
@@ -94,7 +97,21 @@ class Controller(object):
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
 
     def solve(self, J, error):
-        return numpy.linalg.pinv(J, 0.01).dot(error)
+        def invert_clip(s):
+            return 1./s if s > self.threshold else 0.
+
+        def invert_damp(s):
+            return s/(s**2 + self.damping**2)
+
+        def invert_smooth_clip(s):
+            return s/(self.threshold**2) if s < self.threshold else 1./s
+
+        U, S, Vt = numpy.linalg.svd(J)
+        rank = min(U.shape[0], Vt.shape[1])
+        for i in range(rank):
+            S[i] = invert_smooth_clip(S[i])
+
+        return numpy.dot(Vt.T[:, 0:rank], S * U.T.dot(numpy.array(error)))
 
     @staticmethod
     def position_error(T_tgt, T_cur):
