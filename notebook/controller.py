@@ -32,7 +32,7 @@ class MyInteractiveMarkerServer(InteractiveMarkerServer):
         # Create a control to move a (sphere) marker around with the mouse
         control = InteractiveMarkerControl()
         control.name = "move_3d"
-        control.interaction_mode = InteractiveMarkerControl.MOVE_3D
+        control.interaction_mode = InteractiveMarkerControl.MOVE_ROTATE_3D
         control.markers.extend(frame(numpy.identity(4), scale=0.1, frame_id='').markers)
         im.controls.append(control)
 
@@ -41,6 +41,17 @@ class MyInteractiveMarkerServer(InteractiveMarkerServer):
             control = InteractiveMarkerControl()
             control.name = "move_" + dir
             control.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
+            control.orientation.x = 1 if dir == 'x' else 0
+            control.orientation.y = 1 if dir == 'y' else 0
+            control.orientation.z = 1 if dir == 'z' else 0
+            control.orientation.w = 1
+            im.controls.append(control)
+
+        # Create controls to rotate the marker
+        for dir in 'xyz':
+            control = InteractiveMarkerControl()
+            control.name = "rotate_" + dir
+            control.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
             control.orientation.x = 1 if dir == 'x' else 0
             control.orientation.y = 1 if dir == 'y' else 0
             control.orientation.z = 1 if dir == 'z' else 0
@@ -89,9 +100,23 @@ class Controller(object):
     def position_error(T_tgt, T_cur):
         return T_tgt[0:3, 3]-T_cur[0:3, 3]
 
+    @staticmethod
+    def orientation_error(T_tgt, T_cur):
+        delta = numpy.identity(4)
+        delta[0:3, 0:3] = T_cur[0:3, 0:3].T.dot(T_tgt[0:3, 0:3])
+        angle, axis, _ = tf.rotation_from_matrix(delta)
+        # transform rotational velocity from end-effector into base frame orientation (only R!)
+        return T_cur[0:3, 0:3].dot(angle * axis)
+
     def position_control(self, target):
         v = self.position_error(target, self.T)
         q_delta = self.solve(self.J[0:3, :], v)
+        self.actuate(q_delta)
+
+    def pose_control(self, target):
+        v = self.position_error(target, self.T)
+        w = self.orientation_error(target, self.T)
+        q_delta = self.solve(self.J, numpy.block([0.1*v, 0.1*w]))
         self.actuate(q_delta)
 
     def lissajous(self, w=0.1*2*numpy.pi, n=2):
@@ -108,5 +133,5 @@ rospy.init_node('ik')
 c = Controller()
 rate = rospy.Rate(50)
 while not rospy.is_shutdown():
-    c.lissajous()
+    c.pose_control(c.im_server.target)
     rate.sleep()
