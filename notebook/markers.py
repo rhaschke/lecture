@@ -86,8 +86,15 @@ def addArrowControls(im, dirs='xyz'):
 
 def addOrientationControls(im, dirs='xyz'):
     # Create controls to rotate the marker
-    # Task for an assignment
-    pass
+    for dir in dirs:
+        control = InteractiveMarkerControl()
+        control.name = 'rotate_' + dir
+        control.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+        control.orientation.x = 1.0 if dir == "x" else 0.0
+        control.orientation.z = 1.0 if dir == "y" else 0.0
+        control.orientation.y = 1.0 if dir == "z" else 0.0
+        control.orientation.w = 1.0
+        im.controls.append(control)
 
 
 def createPose(T):

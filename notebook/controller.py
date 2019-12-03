@@ -81,9 +81,23 @@ class Controller(object):
         """Given homogenous transforms of target and current pose, compute error vector"""
         return T_tgt[0:3, 3]-T_cur[0:3, 3]
 
+    @staticmethod
+    def orientation_error(T_tgt, T_cur):
+        delta = numpy.identity(4)
+        delta[0:3, 0:3] = T_cur[0:3, 0:3].T.dot(T_tgt[0:3, 0:3])
+        angle, axis, _ = tf.rotation_from_matrix(delta)
+        # transform rotational velocity from end-effector into base frame orientation (only R!)
+        return T_cur[0:3, 0:3].dot(angle * axis)
+
     def position_control(self, target):
         v = self.position_error(target, self.T)
         q_delta = self.solve(self.J[0:3, :], v)
+        self.actuate(q_delta)
+
+    def pose_control(self, target):
+        v = self.position_error(target, self.T)
+        w = self.orientation_error(target, self.T)
+        q_delta = self.solve(self.J, numpy.block([0.1*v, 0.1*w]))
         self.actuate(q_delta)
 
     def lissajous(self, w=0.1*2*numpy.pi, n=2):
@@ -107,7 +121,7 @@ if __name__ == '__main__':
         addMarker(ims, iPoseMarker(c.T), processFeedback(c.setTarget))
         ims.applyChanges()
 
-        timer = node.create_timer(0.02, c.lissajous)
+        timer = node.create_timer(0.02, lambda: c.pose_control(c.targets["pose"]))
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
