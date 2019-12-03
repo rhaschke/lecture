@@ -120,7 +120,15 @@ class RobotModel():
                 return joints[joint.name]
             return joint.mimic.multiplier * value(joint.mimic.joint) + joint.mimic.offset
 
+        def index(joint):
+            """Get joint index (into self.active_joint) and the velocity scaling factor"""
+            if joint.mimic is None:
+                return next((i for i, j in enumerate(self.active_joints) if j is joint), None), 1.0
+            idx, scale = index(joint.mimic.joint)
+            return idx, joint.mimic.multiplier * scale
+
         T = numpy.identity(4)
+        J = numpy.zeros((6, len(self.active_joints)))
         joint = self.links[link]
         while joint is not None:
             T_offset = joint.T  # fixed transform from parent to joint frame
@@ -135,7 +143,7 @@ class RobotModel():
                 raise Exception("unknown joint type: " + str(joint.jtype))
             # TODO: actually compute forward kinematics
             joint = self.links[joint.parent]
-        return T
+        return T, J
 
 
 # code executed when directly running this script
@@ -153,7 +161,7 @@ if __name__ == "__main__":
         joints = {j.name: random.uniform(j.min, j.max) for j in robot.active_joints}
         pub.publish(JointState(name=joints.keys(), position=joints.values()))
 
-        T = robot.fk('panda_rightfinger', joints)
+        T, J = robot.fk('panda_link8', joints)
         marker_pub.publish(frame(T))
 
         rospy.rostime.wallsleep(1)
