@@ -157,12 +157,8 @@ class RobotModel():
             # climb upwards to parent joint
             joint = self.links[joint.parent]
 
-        # As we climbed the kinematic tree from end-effector to base frame, we have
-        # represented all Jacobian twists w.r.t. the end-effector frame.
-        # Now transform all twists into the orientation of the base frame
-        R = T[0:3, 0:3]
-        Ad_R = numpy.block([[R, numpy.zeros((3, 3))], [numpy.zeros((3, 3)), R]])
-        return T, Ad_R.dot(J)
+        # Jacobian is represented w.r.t. end-effector frame!
+        return T, J
 
 
 # code executed when directly running this script

@@ -87,7 +87,10 @@ class Controller(object):
 
     @staticmethod
     def position_error(T_tgt, T_cur):
-        return T_tgt[0:3, 3]-T_cur[0:3, 3]
+        p_err = T_tgt[0:3, 3]-T_cur[0:3, 3]
+        R = T_cur[0:3, 0:3]
+        # transform error vector from base frame to end-effector frame
+        return R.T.dot(p_err)
 
     def position_control(self, target):
         v = self.position_error(target, self.T)
