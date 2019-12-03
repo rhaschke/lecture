@@ -105,15 +105,17 @@ class Controller(object):
     @staticmethod
     def position_error(T_tgt, T_cur):
         """Given homogenous transforms of target and current pose, compute error vector"""
-        return T_tgt[0:3, 3]-T_cur[0:3, 3]
+        p_err = T_tgt[0:3, 3]-T_cur[0:3, 3]
+        R = T_cur[0:3, 0:3]
+        # transform error vector from base frame to end-effector frame
+        return R.T.dot(p_err)
 
     @staticmethod
     def orientation_error(T_tgt, T_cur):
         delta = numpy.identity(4)
         delta[0:3, 0:3] = T_cur[0:3, 0:3].T.dot(T_tgt[0:3, 0:3])
         angle, axis, _ = tf.rotation_from_matrix(delta)
-        # transform rotational velocity from end-effector into base frame orientation (only R!)
-        return T_cur[0:3, 0:3].dot(angle * axis)
+        return angle * axis
 
     def position_control(self, target):
         v = self.position_error(target, self.T)
