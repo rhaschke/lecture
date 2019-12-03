@@ -132,16 +132,21 @@ class RobotModel():
         joint = self.links[link]
         while joint is not None:
             T_offset = joint.T  # fixed transform from parent to joint frame
-            # TODO: combine with joint's motion transform (rotation / translation along joint axis)
+            # post-multiply joint's motion transform (rotation / translation along joint axis)
             if joint.jtype == Joint.revolute:
                 T_motion = tf.quaternion_matrix(tf.quaternion_about_axis(angle=value(joint), axis=joint.axis))
+                T_offset = T_offset.dot(T_motion)
             elif joint.jtype == Joint.prismatic:
                 T_motion = tf.translation_matrix(value(joint) * joint.axis)
+                T_offset = T_offset.dot(T_motion)
             elif joint.jtype == Joint.fixed:
                 pass
             else:
                 raise Exception("unknown joint type: " + str(joint.jtype))
-            # TODO: actually compute forward kinematics
+            # pre-multiply joint transform with T (because traversing from eef to root)
+            T = T_offset.dot(T)  # T' = joint.T * T_motion * T
+
+            # climb upwards to parent joint
             joint = self.links[joint.parent]
         return T, J
 
