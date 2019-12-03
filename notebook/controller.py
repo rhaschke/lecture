@@ -14,6 +14,8 @@ from robot_model import RobotModel, Joint
 from markers import addMarker, processFeedback, iPoseMarker, frame, point, quaternion, colorRGBA
 
 class Controller(object):
+    damping = 0.1
+    threshold = 0.1
 
     def __init__(
         self,
@@ -74,7 +76,24 @@ class Controller(object):
 
     def solve(self, J, error):
         """Inverse velocity kinematics: q_delta = J^+ * error"""
-        return numpy.linalg.pinv(J, 0.01).dot(error)
+        def invert_clip(s):
+            return 1./s if s > self.threshold else 0.
+
+        def invert_damp(s):
+            return s / (s**2 + self.damping**2)
+
+        def invert_smooth_clip(s):
+            return 1./s if s > self.threshold else s / (self.threshold**2)
+
+        def invert_smooth_damped(s):
+            return 1./s if s > self.threshold else s / (s**2 + (s - self.threshold)**2)
+
+        U, S, Vt = numpy.linalg.svd(J)
+        rank = min(U.shape[0], Vt.shape[1])
+        for i in range(rank):
+            S[i] = invert_smooth_clip(S[i])
+
+        return numpy.dot(Vt.T[:, 0:rank], S * U.T.dot(numpy.array(error)))
 
     @staticmethod
     def position_error(T_tgt, T_cur):
