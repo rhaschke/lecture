@@ -39,6 +39,7 @@ class Controller(object):
         self.reset()
         self.target_link = pose.child_frame_id
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
+        self.preferred_joints = numpy.array(self.joint_msg.position, copy=True)
 
         # prepare publishing eef trace
         self.trace_marker = Marker(type=Marker.LINE_STRIP, header=Header(frame_id='world'),
@@ -90,10 +91,14 @@ class Controller(object):
 
         U, S, Vt = numpy.linalg.svd(J)
         rank = min(U.shape[0], Vt.shape[1])
+        accepted_singular_values = (S > 1e-3).sum()
+        VN = Vt[accepted_singular_values:].T
         for i in range(rank):
             S[i] = invert_smooth_clip(S[i])
 
-        return numpy.dot(Vt.T[:, 0:rank], S * U.T.dot(numpy.array(error)))
+        qdot1 = numpy.dot(Vt.T[:, 0:rank], S * U.T.dot(numpy.array(error)))
+        qdot2 = VN.dot(0.1 * VN.T.dot(self.preferred_joints - self.joint_msg.position))
+        return qdot1 + qdot2
 
     @staticmethod
     def position_error(T_tgt, T_cur):
