@@ -40,6 +40,8 @@ class Controller(object):
         self.target_link = pose.child_frame_id
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
         self.preferred_joints = numpy.array(self.joint_msg.position, copy=True)
+        self.joint_weights = numpy.ones(len(self.joint_msg.position))
+        self.cartesian_weights = numpy.ones(6)
 
         # prepare publishing eef trace
         self.trace_marker = Marker(type=Marker.LINE_STRIP, header=Header(frame_id='world'),
@@ -89,14 +91,18 @@ class Controller(object):
         def invert_smooth_damped(s):
             return 1./s if s > self.threshold else s / (s**2 + (s - self.threshold)**2)
 
-        U, S, Vt = numpy.linalg.svd(J)
+        # SVD of Mx * J * Mq
+        U, S, Vt = numpy.linalg.svd(self.cartesian_weights[:, None] * J * self.joint_weights[None, :])
+        # compute V'.T = V.T * Mq.T
+        Vt *= self.joint_weights[None, :]
+
         rank = min(U.shape[0], Vt.shape[1])
         accepted_singular_values = (S > 1e-3).sum()
         VN = Vt[accepted_singular_values:].T
         for i in range(rank):
             S[i] = invert_smooth_clip(S[i])
 
-        qdot1 = numpy.dot(Vt.T[:, 0:rank], S * U.T.dot(numpy.array(error)))
+        qdot1 = numpy.dot(Vt.T[:, 0:rank], S * U.T.dot(self.cartesian_weights * numpy.array(error)))
         qdot2 = VN.dot(0.1 * VN.T.dot(self.preferred_joints - self.joint_msg.position))
         return qdot1 + qdot2
 
