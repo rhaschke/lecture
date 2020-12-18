@@ -1,5 +1,3 @@
-find_package(catkin REQUIRED COMPONENTS interactive_markers kdl_parser tf_conversions)
-
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
