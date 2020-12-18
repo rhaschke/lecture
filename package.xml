@@ -1,48 +1,29 @@
 <?xml version="1.0"?>
-<package>
+<package format="3">
   <name>lecture</name>
   <version>0.1.0</version>
   <description>Example programs for my robotics lecture</description>
 
-  <!-- One maintainer tag required, multiple allowed, one person per tag --> 
-  <!-- Example:  -->
-  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
   <maintainer email="rhaschke@techfak.uni-bielefeld.de">Robert Haschke</maintainer>
-
-
-  <!-- One license tag required, multiple allowed, one license per tag -->
-  <!-- Commonly used license strings: -->
-  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>BSD</license>
-
-
-  <!-- Url tags are optional, but mutiple are allowed, one per tag -->
-  <!-- Optional attribute type can be: website, bugtracker, or repository -->
-  <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/lecture</url> -->
-
-
-  <!-- Author tags are optional, mutiple are allowed, one per tag -->
-  <!-- Authors do not have to be maintianers, but could be -->
-  <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
   <author email="rhaschke@techfak.uni-bielefeld.de">Robert Haschke</author>
 
+  <license>BSD</license>
 
-  <!-- The *_depend tags are used to specify dependencies -->
-  <!-- Dependencies can be catkin packages or system dependencies -->
   <buildtool_depend>catkin</buildtool_depend>
 
-  <!-- Use build_depend for packages required at compile time: -->
   <build_depend>eigen</build_depend>
-  <build_depend>roscpp</build_depend>
-  <build_depend>interactive_markers</build_depend>
 
-  <!-- Use run_depend for packages you need at runtime: -->
-  <run_depend>roscpp</run_depend>
+  <depend>roscpp</depend>
+  <depend>interactive_markers</depend>
+  <depend>kdl_parser</depend>
+  <depend>tf_conversions</depend>
 
-  <!-- The export tag contains other, unspecified, tags -->
-  <export>
-    <!-- Other tools can request additional information be placed here -->
-  </export>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>rviz</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>joint_state_publisher</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>moveit_resources_panda_moveit_config</exec_depend>
+
+  <export />
 </package>
