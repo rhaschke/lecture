@@ -5,70 +5,11 @@ import rospy
 import random
 from std_msgs.msg import Header
 from sensor_msgs.msg import JointState
-from geometry_msgs.msg import TransformStamped, Transform, Quaternion, Vector3, Point
-from visualization_msgs.msg import Marker, InteractiveMarker, InteractiveMarkerControl
+from geometry_msgs.msg import TransformStamped, Transform, Pose, Quaternion, Vector3, Point
 from tf import transformations as tf
-from interactive_markers.interactive_marker_server import InteractiveMarkerServer
+from interactive_markers.interactive_marker_server import InteractiveMarkerServer, InteractiveMarkerFeedback
 from robot_model import RobotModel, Joint
-from markers import frame
-
-
-class MyInteractiveMarkerServer(InteractiveMarkerServer):
-    def __init__(self, name, T):
-        InteractiveMarkerServer.__init__(self, name)
-        self.target = numpy.identity(4)
-        self.create_interactive_marker(T)
-
-    def create_interactive_marker(self, T):
-        im = InteractiveMarker()
-        im.header.frame_id = "world"
-        im.name = "target"
-        im.description = "Controller Target"
-        im.scale = 0.2
-        im.pose.position = Point(*T[0:3, 3])
-        im.pose.orientation = Quaternion(*tf.quaternion_from_matrix(T))
-        self.process_marker_feedback(im)  # set target to initial pose
-
-        # Create a control to move a (sphere) marker around with the mouse
-        control = InteractiveMarkerControl()
-        control.name = "move_3d"
-        control.interaction_mode = InteractiveMarkerControl.MOVE_ROTATE_3D
-        control.markers.extend(frame(numpy.identity(4), scale=0.1, frame_id='').markers)
-        im.controls.append(control)
-
-        # Create arrow controls to move the marker
-        for dir in 'xyz':
-            control = InteractiveMarkerControl()
-            control.name = "move_" + dir
-            control.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
-            control.orientation.x = 1 if dir == 'x' else 0
-            control.orientation.y = 1 if dir == 'y' else 0
-            control.orientation.z = 1 if dir == 'z' else 0
-            control.orientation.w = 1
-            im.controls.append(control)
-
-        # Create controls to rotate the marker
-        for dir in 'xyz':
-            control = InteractiveMarkerControl()
-            control.name = "rotate_" + dir
-            control.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
-            control.orientation.x = 1 if dir == 'x' else 0
-            control.orientation.y = 1 if dir == 'y' else 0
-            control.orientation.z = 1 if dir == 'z' else 0
-            control.orientation.w = 1
-            im.controls.append(control)
-
-        # Add the marker to the server and indicate that processMarkerFeedback should be called
-        self.insert(im, self.process_marker_feedback)
-
-        # Publish all changes
-        self.applyChanges()
-
-    def process_marker_feedback(self, feedback):
-        q = feedback.pose.orientation
-        p = feedback.pose.position
-        self.target = tf.quaternion_matrix(numpy.array([q.x, q.y, q.z, q.w]))
-        self.target[0:3, 3] = numpy.array([p.x, p.y, p.z])
+from markers import iPoseMarker
 
 
 class Controller(object):
@@ -90,8 +31,24 @@ class Controller(object):
         self.preferred_joints = self.joint_msg.position.copy()
         self.joint_weights = numpy.ones(len(self.joint_msg.position))
         self.cartesian_weights = numpy.ones(6)
+        self.mins = numpy.array([j.min for j in self.robot.active_joints])
+        self.maxs = numpy.array([j.max for j in self.robot.active_joints])
+        self.prismatic = numpy.array([j.jtype == j.prismatic for j in self.robot.active_joints])
 
-        self.im_server = MyInteractiveMarkerServer("controller", self.T)
+        self.targets = dict()
+        self.im_server = InteractiveMarkerServer('controller')
+
+    def addMarker(self, im):
+        self.process_marker_feedback(InteractiveMarkerFeedback(marker_name=im.name, pose=im.pose))  # initialize target
+        self.im_server.insert(im, self.process_marker_feedback)
+        self.im_server.applyChanges()
+
+    def process_marker_feedback(self, feedback, name=None):
+        q = feedback.pose.orientation
+        p = feedback.pose.position
+        T = tf.quaternion_matrix(numpy.array([q.x, q.y, q.z, q.w]))
+        T[0:3, 3] = numpy.array([p.x, p.y, p.z])
+        self.targets[feedback.marker_name] = T
 
     def reset(self):
         self.joint_msg.position = numpy.asarray(
@@ -99,6 +56,9 @@ class Controller(object):
 
     def actuate(self, q_delta):
         self.joint_msg.position += q_delta.ravel()
+        # clip (prismatic) joints
+        self.joint_msg.position[self.prismatic] = numpy.clip(self.joint_msg.position[self.prismatic],
+                                                             self.mins[self.prismatic], self.maxs[self.prismatic])
         self.pub.publish(self.joint_msg)
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
 
@@ -112,7 +72,7 @@ class Controller(object):
         def invert_smooth_clip(s):
             return s/(self.threshold**2) if s < self.threshold else 1./s
 
-        N = numpy.identity(tasks[0][0].shape[1])  # nullspace projector of previous tasks
+        N = numpy.identity(self.J.shape[1])  # nullspace projector of previous tasks
         JA = numpy.zeros((0, N.shape[0]))  # accumulated Jacobians
         qdot = numpy.zeros(N.shape[0])
 
@@ -125,7 +85,7 @@ class Controller(object):
             for i in range(rank):
                 S[i] = invert_smooth_clip(S[i])
 
-            qdot += numpy.dot(Vt.T[:, 0:rank], S * U.T.dot(numpy.array(e) - J.dot(qdot)))
+            qdot += numpy.dot(Vt.T[:, 0:rank], S * U.T.dot(numpy.array(e) - J.dot(qdot))).reshape(qdot.shape)
 
             # compute new nullspace projector
             JA = numpy.vstack([JA, J])
@@ -133,6 +93,7 @@ class Controller(object):
             accepted_singular_values = (S > 1e-3).sum()
             VN = Vt[accepted_singular_values:].T
             N = VN.dot(VN.T)
+        self.nullspace = VN  # remember nullspace basis
         return qdot
 
     @staticmethod
@@ -186,15 +147,16 @@ class Controller(object):
         t = rospy.get_time()
         offset = numpy.asarray([0.3 * numpy.sin(w * t), 0.3 * numpy.sin(n * w * t), 0.])
         # add offset to current marker pose to draw Lissajous figure in x-y-plane of marker
-        target = numpy.copy(self.im_server.target)
+        target = numpy.copy(self.targets['pose'])
         target[0:3, 3] += target[0:3, 0:3].dot(offset)
-        self.position_control(target)
+        self.pose_control(target)
 
 
 if __name__ == '__main__':
     rospy.init_node('ik')
     c = Controller()
+    c.addMarker(iPoseMarker(c.T))
     rate = rospy.Rate(50)
     while not rospy.is_shutdown():
-        c.hierarchic_control(c.im_server.target)
+        c.hierarchic_control(c.targets['pose'])
         rate.sleep()
