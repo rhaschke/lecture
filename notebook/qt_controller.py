@@ -3,8 +3,11 @@ import threading
 import signal
 import numpy
 import rospy
+from argparse import ArgumentParser
 from controller import Controller
-from markers import iPoseMarker
+from robot_model import adjoint
+from markers import iPositionMarker, iPoseMarker, iPlaneMarker, sphere, box, plane
+from geometry_msgs.msg import Vector3
 
 from python_qt_binding.QtCore import Qt
 from python_qt_binding.QtGui import QFontDatabase
@@ -22,9 +25,10 @@ class Slider(QSlider):
 
 
 class Gui(QWidget):
-    def __init__(self, controller):
+    def __init__(self, controller, task_id):
         super(Gui, self).__init__()
         self.controller = controller
+        self.task_id = task_id
         self.errors = QLabel()
         self.errors.setFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
         self.sliders = []
@@ -49,12 +53,53 @@ class Gui(QWidget):
     def loop(self):
         rate = rospy.Rate(50)
         c = self.controller
-        c.addMarker(iPoseMarker(c.T))
+        task = self.task_id
+        if task == 0:  # pose task
+            c.addMarker(iPoseMarker(c.T))
+        elif task >= 1 and task <= 4:  # move in plane
+            markers = [plane()]
+            if task != 1:
+                markers.append(sphere())
+            c.addMarker(iPlaneMarker(c.T[0:3, 3], markers=markers))
+        elif task >= 5 and task <= 6:  # constrain position to box and orientation to a cone
+            tol = 0.5 * numpy.array([0.2, 0.1, 0.05])  # tolerance box
+            c.addMarker(iPositionMarker(c.T[0:3, 3], markers=[sphere(), box(size=Vector3(*(2.*tol)))]))
 
         ns_old = numpy.zeros((c.N, 0))
         while not rospy.is_shutdown():
-            # position + orientation control
-            tasks = [c.pose_task(c.targets['pose'], c.T)]
+            if task == 0:  # position + orientation control
+                tasks = [c.pose_task(c.targets['pose'], c.T)]
+            elif task >= 1 and task <= 4:
+                # move on a plane spanned by xy axes of marker
+                T = c.targets['plane']
+                normal = T[0:3, 2]  # plane normal from marker's z-axis
+                tasks = [c.plane_task(normal, normal.dot(T[0:3, 3]), scale=0.1)]
+                if task >= 2:
+                    tasks.append(c.distance_task(T, c.T, dist=0.2, scale=0.1))  # maintain distance 0.2 to center
+                    # tasks.append((normal.T.dot(c.J[3:]), 0.01))  # rotates with constant speed about normal axis
+                    # rotate about center with linear velocity: w x r
+                    r = T[0:3, 3] - c.T[0:3, 3]
+                    tasks.append((c.J[:3], numpy.cross(0.01*normal, r)))
+
+                # keep gripper aligned with normal axis
+                normal = numpy.array([0, 0, 1])  # world z-axis
+                if task == 3:  # using parallel_axes_task
+                    tasks.append(c.parallel_axes_task(numpy.array([0, 1, 0]), normal))
+                elif task == 4:  # using cone_task
+                    tasks.append(c.cone_task(numpy.array([0, 1, 0]), normal, threshold=1.0))
+            elif task >= 5 and task <= 6:  # constrain position
+                J, e = c.position_task(c.targets['pos'], c.T)
+                lb_violated, ub_violated = (e < -tol), (e > tol)
+                violated = lb_violated | ub_violated
+                # clip errors to box boundaries
+                clipped = numpy.array(e, copy=True)
+                clipped[lb_violated] -= -tol[lb_violated]
+                clipped[ub_violated] -= tol[ub_violated]
+                # if error violates box constraint, move into box via equality task and clipped error
+                tasks = [(J[violated], clipped[violated])]
+                if task == 6:  # additionally constrain orientation to cone
+                    axis = numpy.array([0, 0, 1])  # cone axis along world's z-axis
+                    tasks.append(c.cone_task(numpy.array([0, 1, 0]), axis, threshold=1.0))
 
             self.showErrors(tasks)
             q_delta = c.solve(tasks)
@@ -76,10 +121,14 @@ class Gui(QWidget):
 
 
 try:
+    parser = ArgumentParser()
+    parser.add_argument("mode", type=int, nargs='?', default=0, help="control mode")
+    args = parser.parse_args()
+
     rospy.init_node('ik')
     app = QApplication(sys.argv)
     app.setApplicationDisplayName("Constrained-based Control Demo")
-    gui = Gui(Controller())
+    gui = Gui(Controller(), args.mode)
     gui.show()
     threading.Thread(target=gui.loop).start()
     signal.signal(signal.SIGINT, signal.SIG_DFL)
