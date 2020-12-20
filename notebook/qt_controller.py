@@ -51,7 +51,7 @@ class Gui(QWidget):
 
     def showErrors(self, tasks):
         numpy.set_printoptions(precision=3, suppress=True)
-        self.errors.setText('\n'.join([str(e) for J, e in tasks]))
+        self.errors.setText('\n'.join([str(t[1]) for t in tasks]))
 
     def loop(self):
         rate = rospy.Rate(50)
@@ -82,8 +82,10 @@ class Gui(QWidget):
 
         ns_old = numpy.zeros((c.N, 0))
         while not rospy.is_shutdown():
+            tasks = []
             if task == 0:  # position + orientation control
                 tasks = [c.pose_task(c.targets['pose'], c.T)]
+
             elif task >= 1 and task <= 4:
                 # move on a plane spanned by xy axes of marker
                 T = c.targets['plane']
@@ -100,16 +102,13 @@ class Gui(QWidget):
                 normal = numpy.array([0, 0, 1])  # world z-axis
                 if task == 3:  # using parallel_axes_task
                     tasks.append(c.parallel_axes_task(numpy.array([0, 1, 0]), normal))
+
             elif task >= 5 and task <= 6:  # constrain position
                 J, e = c.position_task(c.targets['pos'], c.T)
-                lb_violated, ub_violated = (e < -tol), (e > tol)
-                violated = lb_violated | ub_violated
-                # clip errors to box boundaries
-                clipped = numpy.array(e, copy=True)
-                clipped[lb_violated] -= -tol[lb_violated]
-                clipped[ub_violated] -= tol[ub_violated]
-                # if error violates box constraint, move into box via equality task and clipped error
-                tasks = [(J[violated], clipped[violated])]
+                # Constrain motion to stay within tolerance box: -tol < -e + J dq < tol
+                lb, ub = (e-tol), (e+tol)
+                tasks.append((J, ub, lb))
+
             if task in [4, 6]:  # additionally constrain orientation to cone
                 cone_pose = c.targets['cone_pose']
                 angle = c.targets['cone_angle']
@@ -121,7 +120,7 @@ class Gui(QWidget):
                 c.marker_pub.publish(MarkerArray(markers=frame(T, scale=0.2, radius=0.01, ns='eef orientation')[1:2]))
 
             self.showErrors(tasks)
-            q_delta = c.solve(tasks)
+            q_delta = c.solve_qp(tasks)
 
             # nullspace control
             N = c.nullspace.shape[1]  # dimensionality of nullspace
