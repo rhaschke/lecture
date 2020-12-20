@@ -3,13 +3,14 @@
 import numpy
 import rospy
 import random
-from std_msgs.msg import Header
+from std_msgs.msg import Header, ColorRGBA
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import TransformStamped, Transform, Pose, Quaternion, Vector3, Point
+from visualization_msgs.msg import Marker, MarkerArray
 from tf import transformations as tf
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer, InteractiveMarkerFeedback
 from robot_model import RobotModel, Joint
-from markers import iPoseMarker
+from markers import createPose, iPoseMarker, frame
 
 
 class Controller(object):
@@ -22,7 +23,7 @@ class Controller(object):
 
         self.robot = RobotModel()
         self.robot._add(Joint(pose))  # add a fixed end-effector transform
-        self.pub = rospy.Publisher('/target_joint_states', JointState, queue_size=10)
+        self.joint_pub = rospy.Publisher('/target_joint_states', JointState, queue_size=10)
         self.joint_msg = JointState()
         self.joint_msg.name = [j.name for j in self.robot.active_joints]
         self.reset()
@@ -35,6 +36,13 @@ class Controller(object):
         self.mins = numpy.array([j.min for j in self.robot.active_joints])
         self.maxs = numpy.array([j.max for j in self.robot.active_joints])
         self.prismatic = numpy.array([j.jtype == j.prismatic for j in self.robot.active_joints])
+
+        # prepare publishing eef trace
+        self.trace_marker = Marker(type=Marker.LINE_STRIP, header=Header(frame_id='world'),
+                                ns='trace', color=ColorRGBA(0, 1, 1, 0.5))
+        self.trace_marker.pose.orientation.w = 1
+        self.trace_marker.scale.x = 0.01  # line width
+        self.marker_pub = rospy.Publisher('/marker_array', MarkerArray, queue_size=10)
 
         self.targets = dict()
         self.im_server = InteractiveMarkerServer('controller')
@@ -61,9 +69,18 @@ class Controller(object):
         # clip (prismatic) joints
         self.joint_msg.position[self.prismatic] = numpy.clip(self.joint_msg.position[self.prismatic],
                                                              self.mins[self.prismatic], self.maxs[self.prismatic])
-        self.pub.publish(self.joint_msg)  # publish new joint state
+        self.joint_pub.publish(self.joint_msg)  # publish new joint state
         joints = dict(zip(self.joint_msg.name, self.joint_msg.position))  # turn list of names and joint values into map
         self.T, self.J = self.robot.fk(self.target_link, joints)  # compute new forward kinematics and Jacobian
+
+        # publish eef marker
+        msg = MarkerArray(markers=frame(self.T, scale=0.05, ns='eef frame'))
+        trace = self.trace_marker.points
+        trace.append(Point(*self.T[0:3, 3]))
+        if (len(trace) > 1000):
+            del trace[0]
+        msg.markers.append(self.trace_marker)
+        self.marker_pub.publish(msg)
 
     def solve(self, tasks):
         """Hierarchically solve tasks of the form J dq = e"""

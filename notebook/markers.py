@@ -20,12 +20,12 @@ def cylinder(radius=0.02, len=0.1, color=ColorRGBA(1, 0, 0, 1), **kwargs):
     return Marker(type=Marker.CYLINDER, scale=scale, color=color, **kwargs)
 
 
-def frame(T, scale=0.1, frame_id='world'):
+def frame(T, scale=0.1, frame_id='world', ns='frame'):
     """Create a frame composed from three cylinders"""
     markers = []
     p = T[0:3, 3]
 
-    defaults = dict(header=Header(frame_id=frame_id), ns='frame')
+    defaults = dict(header=Header(frame_id=frame_id), ns=ns)
 
     xaxis = tf.quaternion_about_axis(numpy.pi / 2., [0, 1, 0])
     yaxis = tf.quaternion_about_axis(numpy.pi / 2., [-1, 0, 0])
