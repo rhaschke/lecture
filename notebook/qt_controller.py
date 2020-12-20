@@ -33,7 +33,7 @@ class Gui(QWidget):
         layout.addWidget(QLabel('errors:'))
         layout.addWidget(self.errors)
         layout.addWidget(QLabel('nullspace control:'))
-        for _ in range(len(controller.joint_msg.name)):
+        for _ in range(controller.N):
             slider = Slider()
             self.sliders.append(slider)
             layout.addWidget(slider)
@@ -51,7 +51,7 @@ class Gui(QWidget):
         c = self.controller
         c.addMarker(iPoseMarker(c.T))
 
-        ns_old = numpy.zeros((len(self.sliders), 0))
+        ns_old = numpy.zeros((c.N, 0))
         while not rospy.is_shutdown():
             # position + orientation control
             tasks = [c.pose_task(c.targets['pose'], c.T)]

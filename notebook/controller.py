@@ -28,8 +28,9 @@ class Controller(object):
         self.reset()
         self.target_link = pose.child_frame_id
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
+        self.N = self.J.shape[1]  # number of (active) joints
         self.preferred_joints = self.joint_msg.position.copy()
-        self.joint_weights = numpy.ones(len(self.joint_msg.position))
+        self.joint_weights = numpy.ones(self.N)
         self.cartesian_weights = numpy.ones(6)
         self.mins = numpy.array([j.min for j in self.robot.active_joints])
         self.maxs = numpy.array([j.max for j in self.robot.active_joints])
@@ -63,6 +64,7 @@ class Controller(object):
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
 
     def solve(self, tasks):
+        """Hierarchically solve tasks of the form J dq = e"""
         def invert_clip(s):
             return 1./s if s > self.threshold else 0.
 
@@ -72,9 +74,9 @@ class Controller(object):
         def invert_smooth_clip(s):
             return s/(self.threshold**2) if s < self.threshold else 1./s
 
-        N = numpy.identity(self.J.shape[1])  # nullspace projector of previous tasks
-        JA = numpy.zeros((0, N.shape[0]))  # accumulated Jacobians
-        qdot = numpy.zeros(N.shape[0])
+        N = numpy.identity(self.N)  # nullspace projector of previous tasks
+        JA = numpy.zeros((0, self.N))  # accumulated Jacobians
+        qdot = numpy.zeros(self.N)
 
         for J, e in tasks:
             U, S, Vt = numpy.linalg.svd(J.dot(N) * self.joint_weights[None, :])
