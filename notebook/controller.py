@@ -145,7 +145,9 @@ class Controller(object):
 
         self.nullspace = numpy.zeros((self.N, 0))
         try:
-            result = qpsolvers.solve_qp(P, q, G=self.vstack(Gs), h=self.hstack(hs))
+            result = qpsolvers.solve_qp(P, q, G=self.vstack(Gs), h=self.hstack(hs), A=None, b=None,
+                                        lb=numpy.maximum(-0.1, self.mins - self.joint_msg.position),
+                                        ub=numpy.minimum(0.1, self.maxs - self.joint_msg.position))
             if result is None:
                 print("Failed to find a solution")
         except ValueError as e:
