@@ -3,9 +3,10 @@
 import numpy
 import rospy
 import random
-from std_msgs.msg import Header
+from std_msgs.msg import Header, ColorRGBA
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import TransformStamped, Transform, Pose, Quaternion, Vector3, Point
+from visualization_msgs.msg import Marker
 from tf import transformations as tf
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer, InteractiveMarkerFeedback
 from robot_model import RobotModel, Joint
@@ -22,7 +23,7 @@ class Controller(object):
 
         self.robot = RobotModel()
         self.robot._add(Joint(pose))  # add a fixed end-effector transform
-        self.pub = rospy.Publisher('/target_joint_states', JointState, queue_size=10)
+        self.joint_pub = rospy.Publisher('/target_joint_states', JointState, queue_size=10)
         self.joint_msg = JointState()
         self.joint_msg.name = [j.name for j in self.robot.active_joints]
         self.reset()
@@ -35,6 +36,13 @@ class Controller(object):
         self.mins = numpy.array([j.min for j in self.robot.active_joints])
         self.maxs = numpy.array([j.max for j in self.robot.active_joints])
         self.prismatic = numpy.array([j.jtype == j.prismatic for j in self.robot.active_joints])
+
+        # prepare publishing eef trace
+        self.trace_msg = Marker(type=Marker.LINE_STRIP, header=Header(frame_id='world'), ns='trace',
+                                color=ColorRGBA(0, 1, 1, 0.5))
+        self.trace_msg.pose.orientation.w = 1
+        self.trace_msg.scale.x = 0.01  # line width
+        self.trace_pub = rospy.Publisher('/marker', Marker, queue_size=10)
 
         self.targets = dict()
         self.im_server = InteractiveMarkerServer('controller')
@@ -60,8 +68,10 @@ class Controller(object):
         # clip (prismatic) joints
         self.joint_msg.position[self.prismatic] = numpy.clip(self.joint_msg.position[self.prismatic],
                                                              self.mins[self.prismatic], self.maxs[self.prismatic])
-        self.pub.publish(self.joint_msg)
+        self.joint_pub.publish(self.joint_msg)
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
+        self.trace_msg.points.append(Point(*self.T[0:3, 3]))
+        self.trace_pub.publish(self.trace_msg)
 
     def solve(self, tasks):
         """Hierarchically solve tasks of the form J dq = e"""
