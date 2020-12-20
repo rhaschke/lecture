@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import numpy
+import qpsolvers
 import rospy
 import random
 from std_msgs.msg import Header, ColorRGBA
@@ -116,6 +117,47 @@ class Controller(object):
         self.nullspace = VN  # remember nullspace basis
         return qdot
 
+    def solve_qp(self, tasks):
+        """Solve tasks (J, ub, lb) of the form lb ≤ J dq ≤ ub
+           using quadratic optimization: https://pypi.org/project/qpsolvers"""
+        # combine all equality/inequality tasks into single matrices
+        P = numpy.identity(self.N)  # minimize joint velocity
+        q = numpy.zeros(self.N)
+        As, bs, Gs, hs = [], [], [], []
+        for task in tasks:
+            try:  # inequality tasks are pairs of (J, ub, lb=None)
+                J, ub, lb = task
+                Gs.append(J)
+                hs.append(ub)
+                if lb is not None:
+                    Gs.append(-J)
+                    hs.append(-lb)
+            except ValueError:  # equality tasks are pairs of (J, err)
+                J, err = task
+                As.append(J)
+                bs.append(err)
+        self.nullspace = numpy.zeros((self.N, 0))
+        try:
+            result = qpsolvers.solve_qp(P, q, G=self.vstack(Gs), h=self.hstack(hs),
+                                        A=self.vstack(As), b=self.hstack(bs))
+            if result is None:
+                print("Failed to find a solution")
+        except ValueError as e:
+            print(e)
+            result = None
+        if result is None:
+            return numpy.zeros(self.N)
+        else:
+            return result
+
+    @staticmethod
+    def vstack(items):
+        return numpy.vstack(items) if items else None
+
+    @staticmethod
+    def hstack(items):
+        return numpy.hstack(items) if items else None
+
     @staticmethod
     def stack(tasks):
         """Combine all tasks by stacking them into a single Jacobian"""
@@ -159,10 +201,10 @@ class Controller(object):
         axis = self.T[0:3, 0:3].dot(axis)  # transform axis from eef frame to base frame
         return (skew(reference).dot(skew(axis))).dot(self.J[3:]), scale * numpy.cross(reference, axis)
 
-    def cone_task(self, axis, reference, threshold, scale=1.0):
+    def cone_task(self, axis, reference, threshold):
         """Align axis in eef frame to lie in cone spanned by reference axis and opening angle acos(threshold)"""
         axis = self.T[0:3, 0:3].dot(axis)  # transform axis from eef frame to base frame
-        return reference.T.dot(skew(axis)).dot(self.J[3:]), scale * (reference.T.dot(axis) - threshold)
+        return reference.T.dot(skew(axis)).dot(self.J[3:]), (reference.T.dot(axis) - threshold), None
 
     def position_control(self, target):
         q_delta = self.solve(self.position_task(target, self.T))
