@@ -134,9 +134,12 @@ class RobotModel():
             T_offset = joint.T  # fixed transform from parent to joint frame
             # post-multiply joint's motion transform (rotation / translation along joint axis)
             if joint.jtype == Joint.revolute:
+                # transform twist from current joint frame (joint.axis) into eef frame (via T^-1)
+                twist = adjoint(T, inverse=True).dot(numpy.block([numpy.zeros(3), joint.axis]))
                 T_motion = tf.quaternion_matrix(tf.quaternion_about_axis(angle=value(joint), axis=joint.axis))
                 T_offset = T_offset.dot(T_motion)
             elif joint.jtype == Joint.prismatic:
+                twist = adjoint(T, inverse=True).dot(numpy.block([joint.axis, numpy.zeros(3)]))
                 T_motion = tf.translation_matrix(value(joint) * joint.axis)
                 T_offset = T_offset.dot(T_motion)
             elif joint.jtype == Joint.fixed:
@@ -146,9 +149,20 @@ class RobotModel():
             # pre-multiply joint transform with T (because traversing from eef to root)
             T = T_offset.dot(T)  # T' = joint.T * T_motion * T
 
+            # update the Jacobian
+            idx, scale = index(joint)  # find active joint index for given joint
+            if idx is not None:  # ignore fixed joints
+                J[:, idx] += scale * twist  # add twist contribution, optionally scaled by mimic joint's multiplier
+
             # climb upwards to parent joint
             joint = self.links[joint.parent]
-        return T, J
+
+        # As we climbed the kinematic tree from end-effector to base frame, we have
+        # represented all Jacobian twists w.r.t. the end-effector frame.
+        # Now transform all twists into the orientation of the base frame
+        R = T[0:3, 0:3]
+        Ad_R = numpy.block([[R, numpy.zeros((3, 3))], [numpy.zeros((3, 3)), R]])
+        return T, Ad_R.dot(J)
 
 
 # code executed when directly running this script
