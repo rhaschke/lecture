@@ -24,8 +24,15 @@ def hat(p):
 
 
 def adjoint(T, inverse=False):
-    R = T[0:3, 0:3]
-    p = T[0:3, 3]
+    if T.shape == (4, 4):
+        R = T[0:3, 0:3]
+        p = T[0:3, 3]
+    elif T.shape == (3, 3):
+        R = T
+        p = numpy.zeros(3)
+    else:
+        R = numpy.identity(3)
+        p = T
     if not inverse:
         return numpy.block([[R, hat(p).dot(R)], [numpy.zeros((3, 3)), R]])
     else:
