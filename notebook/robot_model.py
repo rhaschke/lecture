@@ -29,8 +29,15 @@ def hat(p):
 
 def adjoint(T, inverse=False):
     """Return adjoint matrix for homogenous transform T (or its inverse)."""
-    R = T[0:3, 0:3]
-    p = T[0:3, 3]
+    if T.shape == (4, 4): # input T is homogenous transform
+        R = T[0:3, 0:3]
+        p = T[0:3, 3]
+    elif T.shape == (3, 3): # input T is rotation matrix
+        R = T
+        p = numpy.zeros(3)
+    else: # input T is position vector
+        R = numpy.identity(3)
+        p = T
     if not inverse:
         return numpy.block([[R, hat(p).dot(R)], [numpy.zeros((3, 3)), R]])
     else:
