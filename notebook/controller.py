@@ -88,6 +88,9 @@ class Controller(object):
         JA = numpy.zeros((0, self.N))  # accumulated Jacobians
         qdot = numpy.zeros(self.N)
 
+        if isinstance(tasks,tuple):
+            tasks = [tasks]
+
         for J, e in tasks:
             U, S, Vt = numpy.linalg.svd(J.dot(N) * self.joint_weights[None, :])
             # compute V'.T = V.T * Mq.T
