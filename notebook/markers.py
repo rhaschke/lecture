@@ -20,6 +20,16 @@ def cylinder(radius=0.02, len=0.1, color=ColorRGBA(1, 0, 0, 1), **kwargs):
     return Marker(**kwargs, type=Marker.CYLINDER, scale=scale, color=color)
 
 
+def box(size=Vector3(0.1, 0.1, 0.1), color=ColorRGBA(1, 1, 1, 0.5), **kwargs):
+    """Create a box marker"""
+    return Marker(**kwargs, type=Marker.CUBE, scale=size, color=color)
+
+
+def plane(size=1.0, color=ColorRGBA(1, 1, 1, 0.5), **kwargs):
+    """Create a plane (a flat box)"""
+    return box(**kwargs, size=Vector3(size, size, 1e-3), color=color)
+
+
 def frame(T, scale=0.1, frame_id='world'):
     """Create a frame composed from three cylinders"""
     markers = []
@@ -92,20 +102,36 @@ def createPose(T):
     return Pose(position=Point(*T[0:3, 3]), orientation=Quaternion(*tf.quaternion_from_matrix(T)))
 
 
-def iPositionMarker(T, name='pos'):
+def iPositionMarker(T, markers=[sphere()], name='pos'):
     im = InteractiveMarker()
     im.header.frame_id = "world"
     im.name = name
     im.description = "Pos"
     im.scale = 0.2
     im.pose = createPose(T)
-    add3DControls(im, [sphere()])
+    if markers:
+        add3DControls(im, markers)
     addArrowControls(im)
     return im
 
 
-def iPoseMarker(T, name='pose'):
-    im = iPositionMarker(T, name)
+def iPoseMarker(T, markers=[sphere()], name='pose'):
+    im = iPositionMarker(T, markers, name)
     im.description = "Pose 6D"
     addOrientationControls(im)
+    return im
+
+
+def iPlaneMarker(pos, markers, name='plane'):
+    im = InteractiveMarker()
+    im.header.frame_id = "world"
+    im.name = name
+    im.description = "Plane"
+    im.scale = 0.2
+    im.pose = createPose(pos)
+    if markers:
+        add3DControls(im, markers)
+    else:
+        addArrowControls(im, dirs='z')
+        addOrientationControls(im, dirs='xy')
     return im
