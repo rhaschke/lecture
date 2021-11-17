@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Marker1
-        - /Marker1/Status1
         - /InteractiveMarkers1
       Splitter Ratio: 0.566107988357544
     Tree Height: 770
@@ -135,6 +134,27 @@ Visualization Manager:
       Show Visual Aids: false
       Update Topic: /controller/update
       Value: true
+    - Class: agni_tf_tools/Static Transform Publisher
+      Enabled: true
+      Name: Static Transform Publisher
+      Value: true
+      adapt transformation: false
+      marker type:
+        Value: static frame
+        marker scale: 0.05000000074505806
+      parent frame: panda_link8
+      publish transform:
+        Value: false
+        child frame: ""
+      rotation:
+        axes: xyz
+        e1: 0
+        e2: 0
+        e3: 45
+      translation:
+        X: 0
+        Y: 0
+        Z: 0.10499999672174454
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
