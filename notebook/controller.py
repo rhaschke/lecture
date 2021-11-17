@@ -120,9 +120,7 @@ class Controller(object):
     def solve_qp(self, tasks):
         """Solve tasks (J, ub, lb) of the form lb ≤ J dq ≤ ub
            using quadratic optimization: https://pypi.org/project/qpsolvers"""
-        # combine all equality/inequality tasks into single matrices
-        P = numpy.identity(self.N)  # minimize joint velocity
-        q = numpy.zeros(self.N)
+        # collect equality/inequality tasks in As,bs / Gs,hs
         As, bs, Gs, hs = [], [], [], []
         for task in tasks:
             try:  # inequality tasks are pairs of (J, ub, lb=None)
@@ -136,10 +134,18 @@ class Controller(object):
                 J, err = task
                 As.append(J)
                 bs.append(err)
+        # Formulate equality tasks as a quadratic optimization problem min |J dq -e |^2 + lambda + |dq|^2
+        A = self.vstack(As)
+        b = self.hstack(bs)
+        if A is not None:
+            P = 2 * A.T.dot(A) + 1e-3 * numpy.identity(self.N)
+            q = A.T.dot(-2.0 * b)
+        else:
+            P, q = numpy.identity(self.N), numpy.zeros(self.N)
+
         self.nullspace = numpy.zeros((self.N, 0))
         try:
-            result = qpsolvers.solve_qp(P, q, G=self.vstack(Gs), h=self.hstack(hs),
-                                        A=self.vstack(As), b=self.hstack(bs))
+            result = qpsolvers.solve_qp(P, q, G=self.vstack(Gs), h=self.hstack(hs))
             if result is None:
                 print("Failed to find a solution")
         except ValueError as e:
