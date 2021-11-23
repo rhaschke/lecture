@@ -11,13 +11,13 @@ import numpy
 def sphere(radius=0.02, color=ColorRGBA(1, 0, 1, 0.5), **kwargs):
     """Create a sphere marker"""
     scale = Vector3(radius, radius, radius)
-    return Marker(**kwargs, type=Marker.SPHERE, scale=scale, color=color)
+    return Marker(type=Marker.SPHERE, scale=scale, color=color, **kwargs)
 
 
 def cylinder(radius=0.02, len=0.1, color=ColorRGBA(1, 0, 0, 1), **kwargs):
     """Create a cylinder marker"""
     scale = Vector3(radius, radius, len)
-    return Marker(**kwargs, type=Marker.CYLINDER, scale=scale, color=color)
+    return Marker(type=Marker.CYLINDER, scale=scale, color=color, **kwargs)
 
 
 def box(size=Vector3(0.1, 0.1, 0.1), color=ColorRGBA(1, 1, 1, 0.5), **kwargs):

@@ -43,7 +43,7 @@ class Gui(QWidget):
         self.ns[index] = value
 
     def showErrors(self, tasks):
-        numpy.set_printoptions(precision=3, floatmode='fixed', suppress=True, sign='+')
+        numpy.set_printoptions(precision=3, suppress=True)
         self.errors.setText('\n'.join([str(e) for J, e in tasks]))
 
     def loop(self):
