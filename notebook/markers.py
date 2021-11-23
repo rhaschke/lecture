@@ -22,12 +22,12 @@ def cylinder(radius=0.02, len=0.1, color=ColorRGBA(1, 0, 0, 1), **kwargs):
 
 def box(size=Vector3(0.1, 0.1, 0.1), color=ColorRGBA(1, 1, 1, 0.5), **kwargs):
     """Create a box marker"""
-    return Marker(**kwargs, type=Marker.CUBE, scale=size, color=color)
+    return Marker(type=Marker.CUBE, scale=size, color=color, **kwargs)
 
 
 def plane(size=1.0, color=ColorRGBA(1, 1, 1, 0.5), **kwargs):
     """Create a plane (a flat box)"""
-    return box(**kwargs, size=Vector3(size, size, 1e-3), color=color)
+    return box(size=Vector3(size, size, 1e-3), color=color, **kwargs)
 
 
 def frame(T, scale=0.1, frame_id='world'):
