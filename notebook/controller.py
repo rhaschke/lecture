@@ -70,7 +70,11 @@ class Controller(object):
                                                              self.mins[self.prismatic], self.maxs[self.prismatic])
         self.joint_pub.publish(self.joint_msg)
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
-        self.trace_msg.points.append(Point(*self.T[0:3, 3]))
+
+        trace = self.trace_msg.points
+        trace.append(Point(*self.T[0:3, 3]))
+        if (len(trace) > 1000):
+            del trace[0]
         self.trace_pub.publish(self.trace_msg)
 
     def solve(self, tasks):
