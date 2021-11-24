@@ -1,28 +1,25 @@
-from __future__ import print_function
-
-from copy import deepcopy
-from ctypes import pointer
 from visualization_msgs.msg import Marker, InteractiveMarker, InteractiveMarkerControl
 from std_msgs.msg import Header, ColorRGBA
 from geometry_msgs.msg import Pose, Point, Quaternion, Vector3
 from tf import transformations as tf
 import numpy
 
-def cone(halfOpenAngle, heigth=.1,  color=ColorRGBA(1, .2, 1, 0.5), **kwargs):
+
+def cone(halfOpenAngle, heigth=.1,  color=ColorRGBA(1, .2, 1, .2), **kwargs):
     twopi = numpy.pi *2
     radius = numpy.tan(halfOpenAngle)* heigth
     points = []
-
-    for i in range(100):
-        x1,y1 =  (radius *numpy.sin(twopi* i/100),    radius * numpy.cos(twopi*i/100))
-        x2,y2 =  (radius *numpy.sin(twopi*(i+1)/100), radius * numpy.cos(twopi*(i+1)/100))
+    numTriangels = 50
+    for i in range(numTriangels):
+        x1,y1 =  (radius * numpy.sin(twopi* i/numTriangels),    radius * numpy.cos(twopi*i/numTriangels))
+        x2,y2 =  (radius * numpy.sin(twopi*(i+1)/numTriangels), radius * numpy.cos(twopi*(i+1)/numTriangels))
 
         points.append(Vector3(0,0,0))
         points.append(Vector3(x1,y1, heigth))
         points.append(Vector3(x2,y2, heigth))
 
-
     return Marker(type=Marker.TRIANGLE_LIST, points=points, color=color, **kwargs)
+
 
 def sphere(radius=0.02, color=ColorRGBA(1, 0, 1, 0.5), **kwargs):
     """Create a sphere marker"""
