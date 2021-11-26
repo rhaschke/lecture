@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from visualization_msgs.msg import Marker, InteractiveMarker, InteractiveMarkerControl
 from std_msgs.msg import Header, ColorRGBA
 from geometry_msgs.msg import Pose, Point, Quaternion, Vector3
