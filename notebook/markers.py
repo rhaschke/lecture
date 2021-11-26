@@ -7,22 +7,6 @@ from tf import transformations as tf
 import numpy
 
 
-def cone(halfOpenAngle, heigth=.1,  color=ColorRGBA(1, .2, 1, .2), **kwargs):
-    twopi = numpy.pi *2
-    radius = numpy.tan(halfOpenAngle)* heigth
-    points = []
-    numTriangels = 50
-    for i in range(numTriangels):
-        x1,y1 =  (radius * numpy.sin(twopi* i/numTriangels),    radius * numpy.cos(twopi*i/numTriangels))
-        x2,y2 =  (radius * numpy.sin(twopi*(i+1)/numTriangels), radius * numpy.cos(twopi*(i+1)/numTriangels))
-
-        points.append(Vector3(0,0,0))
-        points.append(Vector3(x1,y1, heigth))
-        points.append(Vector3(x2,y2, heigth))
-
-    return Marker(type=Marker.TRIANGLE_LIST, points=points, color=color, **kwargs)
-
-
 def sphere(radius=0.02, color=ColorRGBA(1, 0, 1, 0.5), **kwargs):
     """Create a sphere marker"""
     scale = Vector3(radius, radius, radius)
@@ -43,6 +27,21 @@ def box(size=Vector3(0.1, 0.1, 0.1), color=ColorRGBA(1, 1, 1, 0.5), **kwargs):
 def plane(size=1.0, color=ColorRGBA(1, 1, 1, 0.5), **kwargs):
     """Create a plane (a flat box)"""
     return box(size=Vector3(size, size, 1e-3), color=color, **kwargs)
+
+
+def cone(halfOpenAngle, height=.1,  color=ColorRGBA(1, .2, 1, .2), **kwargs):
+    twopi = numpy.pi * 2
+    radius = numpy.tan(halfOpenAngle) * height
+    points = []
+    numTriangles = 50
+    for i in range(numTriangles):
+        points.append(Vector3(0, 0, 0))
+        theta = twopi * i/numTriangles
+        points.append(Vector3(radius * numpy.sin(theta), radius * numpy.cos(theta), height))
+        theta = twopi * (i+1)/numTriangles
+        points.append(Vector3(radius * numpy.sin(theta), radius * numpy.cos(theta), height))
+
+    return Marker(type=Marker.TRIANGLE_LIST, points=points, color=color, **kwargs)
 
 
 def frame(T, scale=0.1, frame_id='world'):
