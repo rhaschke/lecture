@@ -6,7 +6,7 @@ import rospy
 from argparse import ArgumentParser
 from controller import Controller
 from robot_model import adjoint
-from markers import iPositionMarker, iPoseMarker, iPlaneMarker, sphere, box, plane
+from markers import iPositionMarker, iPoseMarker, iPlaneMarker, sphere, box, plane, cone
 from geometry_msgs.msg import Vector3
 
 from python_qt_binding.QtCore import Qt
@@ -54,16 +54,23 @@ class Gui(QWidget):
         rate = rospy.Rate(50)
         c = self.controller
         task = self.task_id
+
+        half_cone_angle = numpy.pi / 6
+        if task in [4, 6]:  # constrain orientation to cone
+            cone_marker = [cone(half_cone_angle)]
+        else:
+            cone_marker = []
+
         if task == 0:  # pose task
             c.addMarker(iPoseMarker(c.T))
         elif task >= 1 and task <= 4:  # move in plane
             markers = [plane()]
             if task != 1:
                 markers.append(sphere())
-            c.addMarker(iPlaneMarker(c.T[0:3, 3], markers=markers))
-        elif task >= 5 and task <= 6:  # constrain position to box and orientation to a cone
+            c.addMarker(iPlaneMarker(c.T[0:3, 3], markers=markers + cone_marker))
+        elif task >= 5 and task <= 6:  # constrain position to box
             tol = 0.5 * numpy.array([0.2, 0.1, 0.05])  # tolerance box
-            c.addMarker(iPositionMarker(c.T[0:3, 3], markers=[sphere(), box(size=Vector3(*(2.*tol)))]))
+            c.addMarker(iPositionMarker(c.T[0:3, 3], markers=[sphere(), box(size=Vector3(*(2.*tol)))] + cone_marker))
 
         ns_old = numpy.zeros((c.N, 0))
         while not rospy.is_shutdown():
