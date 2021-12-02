@@ -6,9 +6,11 @@ import rospy
 from argparse import ArgumentParser
 from controller import Controller
 from robot_model import adjoint
-from markers import iPositionMarker, iPoseMarker, iPlaneMarker, addMarker, processFeedback, sphere, box, plane
+from markers import iPositionMarker, iPoseMarker, iPlaneMarker, iConeMarker, addMarker, processFeedback, sphere, box, plane, frame
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from geometry_msgs.msg import Vector3
+from tf import transformations as tf
+from visualization_msgs.msg import MarkerArray
 
 from python_qt_binding.QtCore import Qt
 from python_qt_binding.QtGui import QFontDatabase
@@ -68,6 +70,13 @@ class Gui(QWidget):
             addMarker(ims, iPositionMarker(c.T[0:3, 3],
                                            markers=[sphere(), box(size=Vector3(*(2.*tol)))]),
                       processFeedback(c.setTarget))
+        if "cone" in mode:  # constrain orientation to cone
+            eef_axis = numpy.array([0, 1, 0])  # y-axis to align with cone axis
+            T = c.T
+            T[0:3, 3] = numpy.array([-0.25, 0, 0])  # place cone next to the robot
+            # add cone marker aligned with current eef's y-axis
+            cm = iConeMarker(ims, T.dot(tf.rotation_matrix(numpy.pi/2, [-1, 0, 0])),
+                             pose_cb=c.setTarget, angle_cb=c.setTarget)
         ims.applyChanges()
 
         ns_old = numpy.zeros((c.N, 0))
@@ -108,8 +117,16 @@ class Gui(QWidget):
             normal = numpy.array([0, 0, 1])  # world z-axis
             if "parallel" in mode:  # using parallel_axes_task
                 tasks.append(c.parallel_axes_task(numpy.array([0, 1, 0]), normal))
+
             elif "cone" in mode:  # using cone_task
-                tasks.append(c.cone_task(numpy.array([0, 1, 0]), normal, threshold=1.0))
+                cone_pose = c.targets['cone_pose']
+                angle = c.targets['cone_angle']
+                tasks.append(c.cone_task(eef_axis, cone_pose[0:3, 2], threshold=numpy.cos(angle)))
+
+                # publish orientation of eef_axis as 2nd cylinder of eef frame
+                T = c.T
+                T[:3, 3] = cone_pose[:3, 3]
+                c.marker_pub.publish(MarkerArray(markers=frame(T, scale=0.2, radius=0.01, ns='eef orientation')[1:2]))
 
             self.showErrors(tasks)
             q_delta = c.solve(tasks)
