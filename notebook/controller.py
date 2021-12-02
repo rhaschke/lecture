@@ -8,9 +8,9 @@ from sensor_msgs.msg import JointState
 from geometry_msgs.msg import TransformStamped, Transform, Pose, Quaternion, Vector3, Point
 from visualization_msgs.msg import Marker, MarkerArray
 from tf import transformations as tf
-from interactive_markers.interactive_marker_server import InteractiveMarkerServer, InteractiveMarkerFeedback
+from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from robot_model import RobotModel, Joint
-from markers import createPose, iPoseMarker, frame
+from markers import addMarker, processFeedback, iPoseMarker, frame
 
 
 def skew(w):
@@ -45,25 +45,15 @@ class Controller(object):
 
         # prepare publishing eef trace
         self.trace_marker = Marker(type=Marker.LINE_STRIP, header=Header(frame_id='world'),
-                                ns='trace', color=ColorRGBA(0, 1, 1, 0.5))
+                                   ns='trace', color=ColorRGBA(0, 1, 1, 0.5))
         self.trace_marker.pose.orientation.w = 1
         self.trace_marker.scale.x = 0.01  # line width
         self.marker_pub = rospy.Publisher('/marker_array', MarkerArray, queue_size=10)
 
         self.targets = dict()
-        self.im_server = InteractiveMarkerServer('controller')
 
-    def addMarker(self, im):
-        self.process_marker_feedback(InteractiveMarkerFeedback(marker_name=im.name, pose=im.pose))  # initialize target
-        self.im_server.insert(im, self.process_marker_feedback)
-        self.im_server.applyChanges()
-
-    def process_marker_feedback(self, feedback, name=None):
-        q = feedback.pose.orientation
-        p = feedback.pose.position
-        T = tf.quaternion_matrix(numpy.array([q.x, q.y, q.z, q.w]))
-        T[0:3, 3] = numpy.array([p.x, p.y, p.z])
-        self.targets[feedback.marker_name] = T
+    def setTarget(self, name, goal):
+        self.targets[name] = goal
 
     def reset(self):
         self.joint_msg.position = numpy.asarray(
@@ -204,7 +194,11 @@ class Controller(object):
 if __name__ == '__main__':
     rospy.init_node('ik')  # create a ROS node
     c = Controller()
-    c.addMarker(iPoseMarker(c.T))
+
+    ims = InteractiveMarkerServer('controller')
+    addMarker(ims, iPoseMarker(c.T), processFeedback(c.setTarget))
+    ims.applyChanges()
+
     rate = rospy.Rate(50)  # Run control loop at 50 Hz
     while not rospy.is_shutdown():
         c.hierarchic_control(c.targets['pose'])
