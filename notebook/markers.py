@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from visualization_msgs.msg import Marker, InteractiveMarker, InteractiveMarkerControl
+from interactive_markers.interactive_marker_server import InteractiveMarkerFeedback
 from std_msgs.msg import Header, ColorRGBA
 from geometry_msgs.msg import Pose, Point, Quaternion, Vector3
 from tf import transformations as tf
@@ -94,7 +95,7 @@ def addArrowControls(im, dirs='xyz'):
     # Create arrow controls to move the marker
     for dir in dirs:
         control = InteractiveMarkerControl()
-        control.name = "move_" + dir
+        control.name = 'move_' + dir
         control.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
         control.orientation.x = 1 if dir == 'x' else 0
         control.orientation.z = 1 if dir == 'y' else 0
@@ -107,7 +108,7 @@ def addOrientationControls(im, dirs='xyz'):
     # Create controls to rotate the marker
     for dir in dirs:
         control = InteractiveMarkerControl()
-        control.name = "rotate_" + dir
+        control.name = 'rotate_' + dir
         control.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
         control.orientation.x = 1 if dir == 'x' else 0
         control.orientation.z = 1 if dir == 'y' else 0
@@ -124,33 +125,49 @@ def createPose(T):
     return Pose(position=Point(*T[0:3, 3]), orientation=Quaternion(*tf.quaternion_from_matrix(T)))
 
 
-def iPositionMarker(T, markers=[sphere()], name='pos'):
-    im = InteractiveMarker()
-    im.header.frame_id = "world"
-    im.name = name
-    im.description = "Pos"
-    im.scale = 0.2
-    im.pose = createPose(T)
+def addMarker(im_server, im, feedback_callback):
+    # call feedback callback once to initialize target
+    feedback_callback(InteractiveMarkerFeedback(marker_name=im.name, pose=im.pose))
+    im_server.insert(im, feedback_callback)
+
+
+def poseMsgToTM(pose):
+    q = pose.orientation
+    p = pose.position
+    T = tf.quaternion_matrix(numpy.array([q.x, q.y, q.z, q.w]))
+    T[0:3, 3] = numpy.array([p.x, p.y, p.z])
+    return T
+
+
+def processFeedback(pose_callback):
+    def process_marker_feedback(feedback):
+        pose_callback(feedback.marker_name, poseMsgToTM(feedback.pose))
+    return process_marker_feedback
+
+
+def iMarker(T, markers=[], name='pose', mode=InteractiveMarkerControl.MOVE_ROTATE_3D, **kwargs):
+    im = InteractiveMarker(name=name, pose=createPose(T), **kwargs)
+    im.header.frame_id = 'world'
     if markers:
-        add3DControls(im, markers)
+        add3DControls(im, markers, mode=mode)
+    return im
+
+
+def iPositionMarker(T, markers=[sphere()], name='pos', **kwargs):
+    im = iMarker(T, markers, name, scale=0.2, description='Pos')
     addArrowControls(im)
     return im
 
 
 def iPoseMarker(T, markers=[sphere()], name='pose'):
-    im = iPositionMarker(T, markers, name)
-    im.description = "Pose 6D"
+    im = iMarker(T, markers, name, scale=0.2, description='Pose 6D')
+    addArrowControls(im)
     addOrientationControls(im)
     return im
 
 
-def iPlaneMarker(pos, markers, name='plane'):
-    im = InteractiveMarker()
-    im.header.frame_id = "world"
-    im.name = name
-    im.description = "Plane"
-    im.scale = 0.2
-    im.pose = createPose(pos)
+def iPlaneMarker(pos, markers, name='plane', **kwargs):
+    im = iMarker(pos, name=name, scale=0.2, description='Plane', **kwargs)
     if markers:
         add3DControls(im, markers)
     else:
