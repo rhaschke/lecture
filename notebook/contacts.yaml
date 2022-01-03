@@ -1,0 +1,9 @@
+- position: [0,-1,1]
+  normal: [0,1,0]
+  type: softfinger
+  friction: 1
+  torsion: 0.5
+- position: [0,1,-1]
+  normal: [0,-1,0]
+  type: coulomb
+  friction: 1
