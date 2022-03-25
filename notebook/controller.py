@@ -120,43 +120,59 @@ class Controller(object):
     def solve_qp(self, tasks):
         """Solve tasks (J, ub, lb) of the form lb ≤ J dq ≤ ub
            using quadratic optimization: https://pypi.org/project/qpsolvers"""
-        # collect equality/inequality tasks in As,bs / Gs,hs
-        As, bs, Gs, hs = [], [], [], []
-        for task in tasks:
+        maxM = numpy.amax([task[0].shape[0] for task in tasks]) # max task dimension
+        sumM = numpy.sum([task[0].shape[0] for task in tasks]) # sum of all task dimensions
+        usedM = 0
+        # allocate arrays once
+        G, h = numpy.zeros((2*sumM, self.N + maxM)), numpy.zeros(2*sumM)
+        P = numpy.identity(self.N+maxM)
+        P[self.N:, self.N:] *= 1.0  # use different scaling for slack variables?
+        q = numpy.zeros(self.N + maxM)
+
+        # joint velocity bounds + slack bounds
+        upper = numpy.hstack([numpy.minimum(0.1, self.maxs - self.joint_msg.position), numpy.zeros(maxM)])
+        lower = numpy.hstack([numpy.maximum(-0.1, self.mins - self.joint_msg.position), numpy.full(maxM, -numpy.infty)])
+
+        # fallback solution
+        dq = numpy.zeros(self.N)
+
+        def add_constraint(A, bound):
+            G[usedM:usedM+M, :N] = A
+            G[usedM:usedM+M, N:N+M] = numpy.identity(M)  # allow (negative) slack variables
+            h[usedM:usedM+M] = bound
+            return usedM + M
+
+        for idx, task in enumerate(tasks):
             try:  # inequality tasks are pairs of (J, ub, lb=None)
                 J, ub, lb = task
-                Gs.append(J)
-                hs.append(ub)
-                if lb is not None:
-                    Gs.append(-J)
-                    hs.append(-lb)
             except ValueError:  # equality tasks are pairs of (J, err)
-                J, err = task
-                As.append(J)
-                bs.append(err)
-        # Formulate equality tasks as a quadratic optimization problem min |J dq -e |^2 + lambda + |dq|^2
-        A = self.vstack(As)
-        b = self.hstack(bs)
-        if A is not None:
-            P = 2 * A.T.dot(A) + 1e-3 * numpy.identity(self.N)
-            q = A.T.dot(-2.0 * b)
-        else:
-            P, q = numpy.identity(self.N), numpy.zeros(self.N)
+                J, ub = task
+                lb = ub  # turn into inequality task: err ≤ J dq ≤ err
+            J = numpy.atleast_2d(J)
+            M, N = J.shape
 
-        self.nullspace = numpy.zeros((self.N, 0))
-        try:
-            result = qpsolvers.solve_qp(P, q, G=self.vstack(Gs), h=self.hstack(hs), A=None, b=None,
-                                        lb=numpy.maximum(-0.1, self.mins - self.joint_msg.position),
-                                        ub=numpy.minimum(0.1, self.maxs - self.joint_msg.position))
+            # augment G, h with current task's constraints
+            oldM = usedM
+            usedM = add_constraint(J, ub)
+            if lb is not None:
+                usedM = add_constraint(-J, -lb)
+
+            result = qpsolvers.solve_qp(P=P[:N+M, :N+M], q=q[:N+M],
+                                        G=G[:usedM, :N+M], h=h[:usedM], A=None, b=None,
+                                        lb=lower[:N+M], ub=upper[:N+M])
             if result is None:
-                print("Failed to find a solution")
-        except ValueError as e:
-            print(e)
-            result = None
-        if result is None:
-            return numpy.zeros(self.N)
-        else:
-            return result
+                print("{}: failed  ".format(idx), end='')
+                usedM = oldM  # ignore subtask and continue with subsequent tasks
+            else: # adapt added constraints for next iteration
+                dq, slacks = result[:N], result[N:]
+                print("{}:".format(idx), slacks, " ", end='')
+                G[oldM:usedM,N:N+M] = 0
+                h[oldM:oldM+M] += slacks
+                if oldM+M < usedM:
+                    h[oldM+M:usedM] -= slacks
+        print()
+        self.nullspace = numpy.zeros((self.N, 0))
+        return dq
 
     @staticmethod
     def vstack(items):
