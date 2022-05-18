@@ -1,3 +1,4 @@
+# python 2/3 compatibility: interpret print() as a function
 from __future__ import print_function
 
 import numpy
@@ -7,6 +8,7 @@ from tf import transformations as tf
 
 
 def get_value(xml, child=None, attribute=None):
+    """Get value of given attribute. If child arg is present, fetch first child of given name."""
     if child is not None:
         xml = xml.getElementsByTagName(child)[0]
     if attribute is not None:
@@ -14,16 +16,19 @@ def get_value(xml, child=None, attribute=None):
 
 
 def parse_vector(s):
+    """Parse a string of shape "0.1 0.2 0.3" into a vector of floats"""
     return numpy.array([float(v) for v in s.split(' ')])
 
 
 def hat(p):
+    """Return skew-symmetric matrix for given vector p"""
     return numpy.array([[0, -p[2], p[1]],
                         [p[2], 0, -p[0]],
                         [-p[1], p[0], 0]])
 
 
 def adjoint(T, inverse=False):
+    """Return adjoint matrix for homogenous transform T (or its inverse)."""
     R = T[0:3, 0:3]
     p = T[0:3, 3]
     if not inverse:
@@ -33,6 +38,7 @@ def adjoint(T, inverse=False):
 
 
 class Mimic():
+    """Load (and represent) the <mimic> tag of an URDF joint"""
     def __init__(self, tag):
         self.joint = tag.getAttribute('joint')
         if tag.hasAttribute('multiplier'):
@@ -46,6 +52,7 @@ class Mimic():
 
 
 class Joint():
+    """Class representing a single URDF joint"""
     fixed = 0
     revolute = 1
     continuous = 1
@@ -59,8 +66,8 @@ class Joint():
             self._init_from_pose(arg)
 
     def _init_from_xml(self, tag):
-        self.jtype = getattr(Joint, tag.getAttribute('type'))
-        self.active = self.jtype in [Joint.revolute, Joint.prismatic]
+        self.jtype = getattr(Joint, tag.getAttribute('type'))  # map joint-type string onto enum
+        self.active = self.jtype in [Joint.revolute, Joint.prismatic]  # is the joint considered active?
         self.name = tag.getAttribute('name')
         self.parent = get_value(tag, 'parent', 'link')
         self.child = get_value(tag, 'child', 'link')
@@ -92,18 +99,20 @@ class Joint():
 
 
 class RobotModel():
+    """Class representing the kinematic tree of a robot"""
     def __init__(self, param='robot_description'):
-        self.links = {}  # map link to its parent joint
-        self.joints = {}  # map joint name to joint instance
-        self.active_joints = []  # active joints
+        self.links = {}  # map link names to its parent joints
+        self.joints = {}  # map joint names to joint instances
+        self.active_joints = []  # list of active, non-mimic joints
 
-        description = rospy.get_param(param)
-        doc = xml.dom.minidom.parseString(description)
+        description = rospy.get_param(param)  # fetch URDF from ROS parameter server
+        doc = xml.dom.minidom.parseString(description)  # parse URDF string into dom
         robot = doc.getElementsByTagName('robot')[0]
-        for tag in robot.getElementsByTagName('joint'):
-            self._add(Joint(tag))
+        for tag in robot.getElementsByTagName('joint'):  # process all <joint> tags
+            self._add(Joint(tag))  # parse and add the joint to the kinematic tree
 
     def _add(self, joint):
+        """Add a single joint to the kinematic tree"""
         self.joints[joint.name] = joint
         if joint.active and joint.mimic is None:
             self.active_joints.append(joint)
@@ -114,6 +123,7 @@ class RobotModel():
             self.links[joint.parent] = None
 
     def fk(self, link, joints):
+        """Compute forward kinematics up to given link using given map of joint angles"""
         def value(joint):
             """Get joint value from joints, considering mimic joints"""
             if joint.mimic is None:
@@ -138,7 +148,7 @@ class RobotModel():
             elif joint.jtype == Joint.prismatic:
                 T_motion = tf.translation_matrix(value(joint) * joint.axis)
             elif joint.jtype == Joint.fixed:
-                pass
+                pass  # no action: fixed frames don't move
             else:
                 raise Exception("unknown joint type: " + str(joint.jtype))
             # TODO: actually compute forward kinematics
@@ -146,7 +156,7 @@ class RobotModel():
         return T, J
 
 
-# code executed when directly running this script
+# testing code executed when directly running this script
 if __name__ == "__main__":
     import random
     from markers import frame, MarkerArray
