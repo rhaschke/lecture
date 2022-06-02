@@ -1,0 +1,12 @@
+<launch>
+	<!-- load robot_description -->
+	<param name="robot_description" command="xacro $(dirname)/scara.urdf.xacro" />
+
+	<!-- gui to set and publish joint values -->
+	<node name="jsp" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" />
+
+	<!-- publish transforms of all robot links -->
+	<node name="rsp" pkg="robot_state_publisher" type="robot_state_publisher" />
+
+	<node name="rviz" pkg="rviz" type="rviz" required="true" args="-d $(dirname)/scara.rviz" />
+</launch>

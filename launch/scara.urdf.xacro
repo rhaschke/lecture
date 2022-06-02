@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="scara">
+    <!-- Expose arguments on command line and define their defaults -->
+    <xacro:arg name="prefix" default="" />
+    <xacro:arg name="l0" default="0.2" />
+    <xacro:arg name="l1" default="0.5" />
+    <xacro:arg name="l2" default="0.5" />
+    <xacro:arg name="l3" default="0.25" />
+
+    <!-- Save arguments into properties for simpler use as ${property} -->
+    <xacro:property name="prefix" value="$(arg prefix)" />
+    <xacro:property name="l0" value="$(arg l0)" />
+    <xacro:property name="l1" value="$(arg l1)" />
+    <xacro:property name="l2" value="$(arg l2)" />
+    <xacro:property name="l3" value="$(arg l3)" />
+
+    <material name="joint">
+        <color rgba="0.1 0.1 0.9 0.5" />
+    </material>
+    <material name="stick">
+        <color rgba="0.5 0.5 0.5 1.0" />
+    </material>
+    <material name="eef">
+        <color rgba="1 1 1 1" />
+    </material>
+
+    <!-- macro to create a cylinder visual -->
+    <xacro:macro name="cylinder" params="length=0.05 radius=0.02 xyz='0 0 0' rpy='0 0 0' material=joint">
+        <visual>
+            <!-- Pose is interpreted w.r.t. parent joint -->
+            <origin xyz="${xyz}" rpy="${rpy}" />
+            <geometry>
+                <cylinder length="${length}" radius="${radius}" />
+            </geometry>
+            <material name="${material}" />
+        </visual>
+    </xacro:macro>
+
+    <!-- macro to create connecting links -->
+    <xacro:macro name="stick" params="length radius=0.01 xyz='0 0 0' rpy='0 0 0' material=stick">
+        <visual>
+            <!-- Pose is interpreted w.r.t. parent joint -->
+            <origin xyz="${xyz}" rpy="${rpy}" />
+            <geometry>
+                <box size="${radius} ${radius} ${length}" />
+            </geometry>
+            <material name="${material}" />
+        </visual>
+    </xacro:macro>
+
+    <xacro:macro name="joint" params="name *origin type=revolute parent child lower=-1.57 upper=1.57">
+        <joint name="${prefix}${name}" type="${type}">
+            <!-- Joint pose w.r.t. previous joint -->
+            <xacro:insert_block name="origin" />
+            <parent link="${prefix}${parent}" />
+            <child link="${prefix}${child}" />
+            <axis xyz="0 0 1" />
+            <limit effort="100.0" lower="${lower}" upper="${upper}" velocity="0.5" />
+        </joint>
+    </xacro:macro>
+
+    <!-- abstract base link -->
+    <link name="${prefix}base_link" />
+    <xacro:joint name="joint1" parent="base_link" child="link1">
+        <origin xyz="0 0 ${l0}" rpy="0 0 0" />
+    </xacro:joint>
+
+    <!-- Instantiate link via macro -->
+    <link name="${prefix}link1">
+        <xacro:cylinder />
+        <xacro:stick length="${l1}" xyz="${l1/2} 0 0" rpy="0 ${pi/2} 0" />
+    </link>
+    <xacro:joint name="joint2" parent="link1" child="link2">
+        <origin xyz="${l1} 0 0" rpy="0 0 0" />
+    </xacro:joint>
+
+    <link name="${prefix}link2">
+        <xacro:cylinder />
+        <xacro:stick length="${l2}" xyz="${l2/2} 0 0" rpy="0 ${pi/2} 0" />
+        <visual>
+            <origin xyz="${l2} 0 0" rpy="0 0 0" />
+            <geometry>
+                <box size="0.04 0.04 0.04" />
+            </geometry>
+            <material name="joint" />
+        </visual>
+    </link>
+    <xacro:joint name="joint3" type="prismatic" parent="link2" child="link3" lower="${-l3}" upper="${l3}">
+        <origin xyz="${l2} 0 0" rpy="${-pi} 0 0" />
+    </xacro:joint>
+
+    <link name="${prefix}link3">
+        <xacro:stick length="${2*l3}" xyz="0 0 0" rpy="0 0 0" />
+    </link>
+    <xacro:joint name="joint4" parent="link3" child="link4">
+        <origin xyz="0 0 ${l3}" rpy="0 0 0" />
+    </xacro:joint>
+
+    <link name="${prefix}link4">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <geometry>
+                <box size="0.05 0.05 0.05" />
+            </geometry>
+            <material name="eef" />
+        </visual>
+    </link>
+
+</robot>
