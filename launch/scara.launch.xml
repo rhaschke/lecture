@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <let name="robot_description"
+		value="$(command 'xacro $(dirname)/scara.urdf.xacro')"/>
+
+	<!-- gui to set and publish joint values -->
+	<node name="jsp" pkg="joint_state_publisher_gui" exec="joint_state_publisher_gui" />
+
+  <node name="rsp" pkg="robot_state_publisher" exec="robot_state_publisher">
+    <param name="publish_frequency" value="10.0" />
+    <param name="robot_description" value="$(var robot_description)" />
+  </node>
+
+	<node name="rviz" pkg="rviz2" exec="rviz2" args="-d $(dirname)/scara.rviz" />
+</launch>
