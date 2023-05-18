@@ -1,3 +1,4 @@
+# python 2/3 compatibility: interpret print() as a function
 from __future__ import print_function
 
 import numpy
@@ -7,45 +8,62 @@ from tf import transformations as tf
 
 
 def get_value(xml, child=None, attribute=None):
+    """Get value of given attribute. If child arg is present, fetch first child of given name."""
     if child is not None:
         xml = xml.getElementsByTagName(child)[0]
     if attribute is not None:
         return xml.getAttribute(attribute)
 
 
-def parse_vector(s):
-    return numpy.array([float(v) for v in s.split(' ')])
+def parse_vector(s, default=None):
+    """Parse a string of shape "0.1 0.2 0.3" into a vector of floats"""
+    if not s:
+        return default
+    return numpy.array([float(v) for v in s.split(" ")])
 
 
 def hat(p):
+    """Return skew-symmetric matrix for given vector p"""
     return numpy.array([[0, -p[2], p[1]],
                         [p[2], 0, -p[0]],
                         [-p[1], p[0], 0]])
 
 
 def adjoint(T, inverse=False):
-    R = T[0:3, 0:3]
-    p = T[0:3, 3]
+    """Return adjoint matrix for homogenous transform T (or its inverse)."""
+    if T.shape == (4, 4):  # input T is homogenous transform
+        R = T[0:3, 0:3]
+        p = T[0:3, 3]
+    elif T.shape == (3, 3):  # input T is rotation matrix
+        R = T
+        p = numpy.zeros(3)
+    else:  # input T is position vector
+        R = numpy.identity(3)
+        p = T
     if not inverse:
         return numpy.block([[R, hat(p).dot(R)], [numpy.zeros((3, 3)), R]])
     else:
         return numpy.block([[R.T, R.T.dot(hat(-p))], [numpy.zeros((3, 3)), R.T]])
 
 
-class Mimic():
+class Mimic:
+    """Load (and represent) the <mimic> tag of an URDF joint"""
+
     def __init__(self, tag):
-        self.joint = tag.getAttribute('joint')
-        if tag.hasAttribute('multiplier'):
-            self.multiplier = float(tag.getAttribute('multiplier'))
+        self.joint = tag.getAttribute("joint")
+        if tag.hasAttribute("multiplier"):
+            self.multiplier = float(tag.getAttribute("multiplier"))
         else:
             self.multiplier = 1.0
-        if tag.hasAttribute('offset'):
-            self.offset = float(tag.getAttribute('offset'))
+        if tag.hasAttribute("offset"):
+            self.offset = float(tag.getAttribute("offset"))
         else:
             self.offset = 0.0
 
 
-class Joint():
+class Joint:
+    """Class representing a single URDF joint"""
+
     fixed = 0
     revolute = 1
     continuous = 1
@@ -59,23 +77,23 @@ class Joint():
             self._init_from_pose(arg)
 
     def _init_from_xml(self, tag):
-        self.jtype = getattr(Joint, tag.getAttribute('type'))
-        self.active = self.jtype in [Joint.revolute, Joint.prismatic]
-        self.name = tag.getAttribute('name')
-        self.parent = get_value(tag, 'parent', 'link')
-        self.child = get_value(tag, 'child', 'link')
-        self.T = tf.euler_matrix(*parse_vector(get_value(tag, 'origin', 'rpy')), axes='sxyz')
-        self.T[0:3, 3] = parse_vector(get_value(tag, 'origin', 'xyz'))
+        self.jtype = getattr(Joint, tag.getAttribute("type"))  # map joint-type string onto enum
+        self.active = self.jtype in [Joint.revolute, Joint.prismatic]  # is the joint considered active?
+        self.name = tag.getAttribute("name")
+        self.parent = get_value(tag, "parent", "link")
+        self.child = get_value(tag, "child", "link")
+        self.T = tf.euler_matrix(*parse_vector(get_value(tag, "origin", "rpy"), default=[0, 0, 0]), axes="sxyz")
+        self.T[0:3, 3] = parse_vector(get_value(tag, "origin", "xyz"), default=[0, 0, 0])
         self.mimic = None
         if self.active:
-            self.axis = parse_vector(get_value(tag, 'axis', 'xyz'))
+            self.axis = parse_vector(get_value(tag, "axis", "xyz"))
             try:
-                self.min = float(get_value(tag, 'limit', 'lower'))
-                self.max = float(get_value(tag, 'limit', 'upper'))
+                self.min = float(get_value(tag, "limit", "lower"))
+                self.max = float(get_value(tag, "limit", "upper"))
             except IndexError:
                 raise Exception("Joint %s has not limits" % self.name)
 
-            mimic = tag.getElementsByTagName('mimic')
+            mimic = tag.getElementsByTagName("mimic")
             self.mimic = Mimic(mimic[0]) if mimic else None
 
     def _init_from_pose(self, transform):
@@ -91,19 +109,22 @@ class Joint():
         self.mimic = None
 
 
-class RobotModel():
-    def __init__(self, param='robot_description'):
-        self.links = {}  # map link to its parent joint
-        self.joints = {}  # map joint name to joint instance
-        self.active_joints = []  # active joints
+class RobotModel:
+    """Class representing the kinematic tree of a robot"""
 
-        description = rospy.get_param(param)
-        doc = xml.dom.minidom.parseString(description)
-        robot = doc.getElementsByTagName('robot')[0]
-        for tag in robot.getElementsByTagName('joint'):
-            self._add(Joint(tag))
+    def __init__(self, param="robot_description"):
+        self.links = {}  # map link names to its parent joints
+        self.joints = {}  # map joint names to joint instances
+        self.active_joints = []  # list of active, non-mimic joints
+
+        description = rospy.get_param(param)  # fetch URDF from ROS parameter server
+        doc = xml.dom.minidom.parseString(description)  # parse URDF string into dom
+        robot = doc.getElementsByTagName("robot")[0]
+        for tag in robot.getElementsByTagName("joint"):  # process all <joint> tags
+            self._add(Joint(tag))  # parse and add the joint to the kinematic tree
 
     def _add(self, joint):
+        """Add a single joint to the kinematic tree"""
         self.joints[joint.name] = joint
         if joint.active and joint.mimic is None:
             self.active_joints.append(joint)
@@ -114,6 +135,7 @@ class RobotModel():
             self.links[joint.parent] = None
 
     def fk(self, link, joints):
+        """Compute forward kinematics up to given link using given map of joint angles"""
         def value(joint):
             """Get joint value from joints, considering mimic joints"""
             if joint.mimic is None:
@@ -138,7 +160,7 @@ class RobotModel():
             elif joint.jtype == Joint.prismatic:
                 T_motion = tf.translation_matrix(value(joint) * joint.axis)
             elif joint.jtype == Joint.fixed:
-                pass
+                pass  # no action: fixed frames don't move
             else:
                 raise Exception("unknown joint type: " + str(joint.jtype))
             # TODO: actually compute forward kinematics
@@ -146,22 +168,22 @@ class RobotModel():
         return T, J
 
 
-# code executed when directly running this script
+# testing code executed when directly running this script
 if __name__ == "__main__":
     import random
     from markers import frame, MarkerArray
     from sensor_msgs.msg import JointState
 
-    rospy.init_node('test_node')
-    pub = rospy.Publisher('/target_joint_states', JointState, queue_size=10)
-    marker_pub = rospy.Publisher('/marker_array', MarkerArray, queue_size=10)
+    rospy.init_node("test_node")
+    pub = rospy.Publisher("/target_joint_states", JointState, queue_size=10)
+    marker_pub = rospy.Publisher("/marker_array", MarkerArray, queue_size=10)
 
     robot = RobotModel()
     while not rospy.is_shutdown():
         joints = {j.name: random.uniform(j.min, j.max) for j in robot.active_joints}
         pub.publish(JointState(name=joints.keys(), position=joints.values()))
 
-        T, J = robot.fk('panda_link8', joints)
+        T, J = robot.fk("panda_link8", joints)
         marker_pub.publish(frame(T))
 
         rospy.rostime.wallsleep(1)

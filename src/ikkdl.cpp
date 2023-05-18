@@ -94,11 +94,11 @@ createViewPlaneControl(bool position, bool orientation)
 	visualization_msgs::InteractiveMarkerControl control;
 	control.orientation_mode = visualization_msgs::InteractiveMarkerControl::VIEW_FACING;
 
-	if (position && orientation)
+	if (position && orientation) {
 		control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D;
-   else if (orientation)
+	} else if (orientation) {
 		control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_3D;
-	else
+	} else
 		control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_3D;
 
 	control.independent_marker_orientation = true;

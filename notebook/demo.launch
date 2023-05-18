@@ -17,5 +17,5 @@
   <node name="rsp" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" />
 
   <!-- Run Rviz -->
-  <node name="$(anon rviz)" pkg="rviz" type="rviz" output="screen" args="-d $(dirname)/demo.rviz" />
+  <node name="$(anon rviz)" pkg="rviz" type="rviz" output="screen" args='-d "$(dirname)/demo.rviz"' />
 </launch>

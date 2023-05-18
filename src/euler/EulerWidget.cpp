@@ -12,7 +12,8 @@ static void disableAxis(QComboBox *w, unsigned int axis) {
 		QStandardItem* item = model->item(i);
 		if (i == axis) {
 			item->setFlags(item->flags() & ~Qt::ItemIsEnabled);
-			if (w->currentIndex() == axis) w->setCurrentIndex((axis+1) % 3);
+			if (w->currentIndex() == static_cast<int>(axis))
+				w->setCurrentIndex((axis + 1) % 3);
 		} else {
 			item->setFlags(item->flags() | Qt::ItemIsEnabled);
 		}
@@ -42,11 +43,11 @@ EulerWidget::EulerWidget(QWidget *parent) :
 
 	// react to angle changes
 	connect(_ui->e1, SIGNAL(valueChanged(double)),
-	        this, SLOT(angleChanged(double)));
+			  this, SLOT(angleChanged()));
 	connect(_ui->e2, SIGNAL(valueChanged(double)),
-	        this, SLOT(angleChanged(double)));
+			  this, SLOT(angleChanged()));
 	connect(_ui->e3, SIGNAL(valueChanged(double)),
-	        this, SLOT(angleChanged(double)));
+			  this, SLOT(angleChanged()));
 }
 
 void EulerWidget::getGuiAxes(uint a[]) const {
@@ -81,7 +82,8 @@ void EulerWidget::axisChanged(int axis) {
 	}
 }
 
-void EulerWidget::angleChanged(double angle) {
+void EulerWidget::angleChanged()
+{
 	double e[3]; getGuiAngles(e);
 	setEulerAngles(e[0], e[1], e[2], false);
 }
@@ -117,10 +119,12 @@ void EulerWidget::setEulerAngles(double e1, double e2, double e3, bool normalize
 
 void EulerWidget::setEulerAxes(uint a1, uint a2, uint a3)
 {
-	if (a1 > 2 || a2 > 2 || a3 > 2) return;
-	if (a1 == _ui->a1->currentIndex() &&
-	    a2 == _ui->a2->currentIndex() &&
-	    a3 == _ui->a3->currentIndex()) return;
+	if (a1 > 2 || a2 > 2 || a3 > 2)
+		return;
+	if (static_cast<int>(a1) == _ui->a1->currentIndex() &&
+		 static_cast<int>(a2) == _ui->a2->currentIndex() &&
+		 static_cast<int>(a3) == _ui->a3->currentIndex())
+		return;
 
 	this->blockSignals(true);
 	_ui->a3->setCurrentIndex(a3);

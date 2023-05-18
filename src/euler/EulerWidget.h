@@ -35,7 +35,7 @@ public slots:
 
 protected slots:
 	void axisChanged(int axis);
-	void angleChanged(double angle);
+	void angleChanged();
 
 private slots:
 	void updateAngles();

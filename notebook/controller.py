@@ -14,6 +14,7 @@ from markers import frame
 
 
 class MyInteractiveMarkerServer(InteractiveMarkerServer):
+    """Server handling interactive rviz markers"""
     def __init__(self, name, T):
         InteractiveMarkerServer.__init__(self, name)
         self.target = numpy.identity(4)
@@ -54,8 +55,10 @@ class MyInteractiveMarkerServer(InteractiveMarkerServer):
         self.applyChanges()
 
     def process_marker_feedback(self, feedback):
-        q = feedback.pose.orientation
-        p = feedback.pose.position
+        """Function called for any marker updates on rviz side"""
+        q = feedback.pose.orientation  # marker orientation as quaternion
+        p = feedback.pose.position  # marker position
+        # Compute target homogenous transform from marker pose
         self.target = tf.quaternion_matrix(numpy.array([q.x, q.y, q.z, q.w]))
         self.target[0:3, 3] = numpy.array([p.x, p.y, p.z])
 
@@ -78,15 +81,19 @@ class Controller(object):
         self.im_server = MyInteractiveMarkerServer("controller", self.T)
 
     def actuate(self, q_delta):
-        self.joint_msg.position += q_delta.ravel()
-        self.pub.publish(self.joint_msg)
-        self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
+        """Move robot by given changes to joint angles"""
+        self.joint_msg.position += q_delta.ravel()  # add (numpy) vector q_delta to current joint position vector
+        self.pub.publish(self.joint_msg)  # publish new joint state
+        joints = dict(zip(self.joint_msg.name, self.joint_msg.position))  # turn list of names and joint values into map
+        self.T, self.J = self.robot.fk(self.target_link, joints)  # compute new forward kinematics and Jacobian
 
     def solve(self, J, error):
+        """Inverse velocity kinematics: q_delta = J^+ * error"""
         return numpy.linalg.pinv(J, 0.01).dot(error)
 
     @staticmethod
     def position_error(T_tgt, T_cur):
+        """Given homogenous transforms of target and current pose, compute error vector"""
         return T_tgt[0:3, 3]-T_cur[0:3, 3]
 
     def position_control(self, target):
@@ -95,9 +102,10 @@ class Controller(object):
         self.actuate(q_delta)
 
 
-rospy.init_node('ik')
-c = Controller()
-rate = rospy.Rate(50)
-while not rospy.is_shutdown():
-    c.position_control(c.im_server.target)
-    rate.sleep()
+if __name__ == '__main__':
+    rospy.init_node('ik')  # create a ROS node
+    c = Controller()
+    rate = rospy.Rate(50)  # Run control loop at 50 Hz
+    while not rospy.is_shutdown():
+        c.position_control(c.im_server.target)
+        rate.sleep()
