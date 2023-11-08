@@ -2,9 +2,6 @@
 ## Your package locations should be listed before other locations
 include_directories(${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
 
-## enable c++11
-add_definitions(-std=c++11)
-
 add_subdirectory(euler)
 
 ## Declare a C++ executable
