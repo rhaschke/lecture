@@ -34,6 +34,7 @@ install(DIRECTORY notebook/
 
 install(PROGRAMS
   notebook/controller.py
+  notebook/fk.py
   notebook/markers.py
   notebook/robot_model.py
   DESTINATION lib/${PROJECT_NAME}
