@@ -1,4 +1,6 @@
 <launch>
+  <arg name="gui" default="false"/>
+
   <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
   <include file="$(find moveit_resources_panda_moveit_config)/launch/planning_context.launch">
     <arg name="load_robot_description" value="true" />
@@ -8,8 +10,9 @@
   <node name="virtual_joint" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 world panda_link0" />
 
   <!-- Publish joint states -->
-  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
-    <param name="/use_gui" value="false" />
+  <arg name="exe" value="joint_state_publisher_gui" if="$(arg gui)"/>
+  <arg name="exe" value="joint_state_publisher" unless="$(arg gui)"/>
+  <node name="joint_state_publisher" pkg="$(arg exe)" type="$(arg exe)">
     <rosparam param="/source_list">[/target_joint_states]</rosparam>
   </node>
 
