@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <node name="rviz" pkg="rviz2" exec="rviz2"
+    args="-d $(find-pkg-share lecture)/launch/euler.rviz" />
+  <node name="euler" pkg="lecture" exec="euler" />
+</launch>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!-- Load URDF -->
+  <let name="robot_description"
+    value="$(command 'xacro $(find-pkg-share moveit_resources_panda_description)/urdf/panda.urdf.xacro')"/>
+
+  <!-- Broadcast static tf for robot root -->
+  <node name="virtual_joint" pkg="tf2_ros" exec="static_transform_publisher"
+        args="--frame-id world --child-frame-id panda_link0" />
+
+  <!-- Publish joint states -->
+  <node name="jsp" pkg="joint_state_publisher" exec="joint_state_publisher">
+    <param name="source_list" value="['/target_joint_states']"/>
+  </node>
+
+  <!-- Given the published joint states, publish tf for all robot links -->
+  <node name="rsp" pkg="robot_state_publisher" exec="robot_state_publisher" respawn="true">
+    <param name="robot_description" value="$(var robot_description)"/>
+  </node>
+
+  <!-- Run Rviz -->
+  <node name="rviz2" pkg="rviz2" exec="rviz2" output="screen" args='-d $(dirname)/demo.rviz' />
+</launch>
