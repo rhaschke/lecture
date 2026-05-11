@@ -2,10 +2,13 @@
 from __future__ import print_function
 
 import numpy
-import rospy
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, HistoryPolicy, ReliabilityPolicy, DurabilityPolicy
+from std_msgs.msg import String
+import time
 import xml.dom.minidom
-from tf import transformations as tf
-
+import tf_transformations as tf
 
 def get_value(xml, child=None, attribute=None):
     """Get value of given attribute. If child arg is present, fetch first child of given name."""
@@ -112,16 +115,48 @@ class Joint:
 class RobotModel:
     """Class representing the kinematic tree of a robot"""
 
-    def __init__(self, param="robot_description"):
+    def __init__(self, node, topic="/robot_description"):
+        self.node = node
         self.links = {}  # map link names to its parent joints
         self.joints = {}  # map joint names to joint instances
         self.active_joints = []  # list of active, non-mimic joints
 
-        description = rospy.get_param(param)  # fetch URDF from ROS parameter server
+        description = self._load_robot_description(topic)
         doc = xml.dom.minidom.parseString(description)  # parse URDF string into dom
         robot = doc.getElementsByTagName("robot")[0]
         for tag in robot.getElementsByTagName("joint"):  # process all <joint> tags
             self._add(Joint(tag))  # parse and add the joint to the kinematic tree
+
+    def _load_robot_description(self, topic, timeout=5.0):
+        """Load robot description from given topic, with given timeout (in seconds)"""
+        description = None
+
+        # robot_description is typically published as a latched (transient-local) topic.
+        # Matching QoS lets late subscribers receive the last published URDF immediately.
+        qos = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+
+        def description_cb(msg):
+            nonlocal description
+            description = msg.data
+
+        sub = self.node.create_subscription(String, topic, description_cb, qos)
+
+        deadline = time.monotonic() + timeout if timeout is not None else None
+        while rclpy.ok() and description is None:
+            rclpy.spin_once(self.node, timeout_sec=0.1)
+            if deadline is not None and time.monotonic() > deadline:
+                break
+
+        self.node.destroy_subscription(sub)
+        if description is None:
+            raise RuntimeError(f"Did not receive robot description on topic '{topic}'")
+
+        return description
 
     def _add(self, joint):
         """Add a single joint to the kinematic tree"""
@@ -174,16 +209,23 @@ if __name__ == "__main__":
     from markers import frame, MarkerArray
     from sensor_msgs.msg import JointState
 
-    rospy.init_node("test_node")
-    pub = rospy.Publisher("/target_joint_states", JointState, queue_size=10)
-    marker_pub = rospy.Publisher("/marker_array", MarkerArray, queue_size=10)
+    rclpy.init()
+    node = Node("test_node")
+    pub = node.create_publisher(JointState, "/target_joint_states", 10)
+    marker_pub = node.create_publisher(MarkerArray, "/marker_array", 10)
 
-    robot = RobotModel()
-    while not rospy.is_shutdown():
+    robot = RobotModel(node)
+    while rclpy.ok():
         joints = {j.name: random.uniform(j.min, j.max) for j in robot.active_joints}
-        pub.publish(JointState(name=joints.keys(), position=joints.values()))
+        pub.publish(
+            JointState(name=list(joints.keys()), position=list(joints.values()))
+        )
 
         T, J = robot.fk("panda_link8", joints)
         marker_pub.publish(frame(T))
 
-        rospy.rostime.wallsleep(1)
+        rclpy.spin_once(node, timeout_sec=0.0)
+        time.sleep(1.0)
+
+    node.destroy_node()
+    rclpy.shutdown()

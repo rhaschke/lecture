@@ -3,12 +3,16 @@
 #include "EulerWidget.h"
 
 #include <QBoxLayout>
-#include <visualization_msgs/InteractiveMarker.h>
-#include <visualization_msgs/InteractiveMarkerFeedback.h>
+#include <functional>
+
+#include <visualization_msgs/msg/interactive_marker.hpp>
+#include <visualization_msgs/msg/interactive_marker_feedback.hpp>
+#include <visualization_msgs/msg/interactive_marker_control.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 
 // update pose's orientation from the given quaternion q
 // pose is passed by reference (&), so the changes are visible outside this function
-static void updatePose(geometry_msgs::Pose &pose,
+static void updatePose(geometry_msgs::msg::Pose &pose,
 							  const Eigen::Quaterniond &q)
 {
 	pose.orientation.w = q.w();
@@ -18,10 +22,9 @@ static void updatePose(geometry_msgs::Pose &pose,
 }
 
 RotationControl::RotationControl(const std::string &title,
-                                 const Eigen::Vector3d &position, const QColor &color,
-                                 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> &server,
-                                 QWidget *parent) :
-   QGroupBox(QString::fromStdString(title), parent), _server(server), _title(title)
+											const Eigen::Vector3d &position, const QColor &color,
+											std::shared_ptr<interactive_markers::InteractiveMarkerServer> &server,
+											QWidget *parent) : QGroupBox(QString::fromStdString(title), parent), _server(server), _title(title)
 {
 	qRegisterMetaType<Eigen::Quaterniond>("Eigen::Quaterniond");
 
@@ -96,9 +99,10 @@ void RotationControl::setEulerAngles(double e1, double e2, double e3) {
 }
 
 /// create an interactive marker control allowing rotation only (with left mouse button)
-static visualization_msgs::InteractiveMarkerControl createViewPlaneControl() {
-	visualization_msgs::InteractiveMarkerControl control;
-	control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_3D;
+static visualization_msgs::msg::InteractiveMarkerControl createViewPlaneControl()
+{
+	visualization_msgs::msg::InteractiveMarkerControl control;
+	control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::ROTATE_3D;
 	control.always_visible = true;
 	control.name = "rotate"; // identify the control (for use in feedback callback)
 
@@ -106,11 +110,12 @@ static visualization_msgs::InteractiveMarkerControl createViewPlaneControl() {
 }
 
 /// create a visual marker, here a box of given dimensions and color
-static visualization_msgs::Marker createBoxMarker(double x, double y, double z,
-                                                  const QColor &color) {
-	visualization_msgs::Marker marker;
+static visualization_msgs::msg::Marker createBoxMarker(double x, double y, double z,
+																		 const QColor &color)
+{
+	visualization_msgs::msg::Marker marker;
 
-	marker.type = visualization_msgs::Marker::CUBE; // create a box
+	marker.type = visualization_msgs::msg::Marker::CUBE; // create a box
 	marker.scale.x = x;										// pass box dimensions via scale
 	marker.scale.y = y;
 	marker.scale.z = z;
@@ -136,28 +141,27 @@ void RotationControl::createInteractiveMarker(const Eigen::Vector3d &pos,
 	updatePose(_pose, _q);
 
 	// configure the interactive marker's pose, name, and size (scale)
-	visualization_msgs::InteractiveMarker imarker;
+	visualization_msgs::msg::InteractiveMarker imarker;
 	imarker.header.frame_id = "world";
-	imarker.header.stamp = ros::Time::now();
 	imarker.pose = _pose;
 	imarker.name = _title;
 	float s = imarker.scale = 0.2;
 
 	// an interactive marker consists of one or more controls determining
 	// the type of interaction (e.g. rotation, translation, etc.)
-	visualization_msgs::InteractiveMarkerControl ctrl = createViewPlaneControl();
+	visualization_msgs::msg::InteractiveMarkerControl ctrl = createViewPlaneControl();
 	// each control can have multiple markers determining its visual appearance
 	ctrl.markers.push_back(createBoxMarker(3*s, 2*s, 1*s, color));
 
 	// add the control to the interactive marker
 	imarker.controls.push_back(ctrl);
 	// add the interactive marker to the server, registering processFeedback as the update callback
-	_server->insert(imarker, boost::bind(&RotationControl::processFeedback, this, _1));
+	_server->insert(imarker, std::bind(&RotationControl::processFeedback, this, std::placeholders::_1));
 }
 
 /// callback for interactive marker updates, providing the new pose and other interaction info
-void RotationControl::processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback)
+void RotationControl::processFeedback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback)
 {
-	const geometry_msgs::Quaternion &q = feedback->pose.orientation;
+	const geometry_msgs::msg::Quaternion &q = feedback->pose.orientation;
 	setValue(Eigen::Quaterniond(q.w, q.x, q.y, q.z), false);
 }

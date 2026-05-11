@@ -5,21 +5,23 @@
 // these are system includes (from Qt, Eigen, ROS)
 #include <QVBoxLayout>
 #include <Eigen/Core>
-#include <ros/ros.h>
 
-MainWindow::MainWindow(QWidget *parent) :
-   QMainWindow(parent), spinner(1)
+MainWindow::MainWindow(const rclcpp::Node::SharedPtr &node, QWidget *parent) : QMainWindow(parent), node(node)
 {
-	server.reset(new interactive_markers::InteractiveMarkerServer("euler","",false));
+	server = std::make_shared<interactive_markers::InteractiveMarkerServer>("euler", node);
 	setupUi();
 
 	server->applyChanges();
-	spinner.start();
+	executor.add_node(node);
+	spin_thread = std::thread([this]()
+									  { executor.spin(); });
 }
 
 MainWindow::~MainWindow()
 {
-	spinner.stop();
+	executor.cancel();
+	if (spin_thread.joinable())
+		spin_thread.join();
 }
 
 // keep axes in sync between the two RotationControl widgets f1 and f2

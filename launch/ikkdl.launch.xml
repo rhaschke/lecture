@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <let name="robot_description"
+		value="$(command 'xacro $(find-pkg-share moveit_resources_panda_description)/urdf/panda.urdf.xacro')"/>
+
+  <node pkg="robot_state_publisher" exec="robot_state_publisher" name="state_publisher">
+    <param name="publish_frequency" value="10.0" />
+    <param name="robot_description" value="$(var robot_description)" />
+  </node>
+
+  <node name="rviz" pkg="rviz2" exec="rviz2"
+    args="-d $(find-pkg-share lecture)/launch/ikkdl.rviz" />
+
+  <node pkg="lecture" exec="ikkdl" name="ikkdl">
+    <param name="robot_description" value="$(var robot_description)" />
+  </node>
+</launch>

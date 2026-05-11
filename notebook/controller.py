@@ -1,13 +1,15 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 import numpy
-import rospy
 import random
+import rclpy
+from rclpy.node import Node
+from rclpy.executors import SingleThreadedExecutor, ExternalShutdownException
 from std_msgs.msg import Header
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import TransformStamped, Transform, Quaternion, Vector3, Point
 from visualization_msgs.msg import Marker, InteractiveMarker, InteractiveMarkerControl
-from tf import transformations as tf
+import tf_transformations as tf
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from robot_model import RobotModel, Joint
 from markers import frame
@@ -15,8 +17,8 @@ from markers import frame
 
 class MyInteractiveMarkerServer(InteractiveMarkerServer):
     """Server handling interactive rviz markers"""
-    def __init__(self, name, T):
-        InteractiveMarkerServer.__init__(self, name)
+    def __init__(self, node, name, T):
+        InteractiveMarkerServer.__init__(self, node, name)
         self.target = numpy.identity(4)
         self.create_interactive_marker(T)
 
@@ -26,8 +28,10 @@ class MyInteractiveMarkerServer(InteractiveMarkerServer):
         im.name = "target"
         im.description = "Controller Target"
         im.scale = 0.2
-        im.pose.position = Point(*T[0:3, 3])
-        im.pose.orientation = Quaternion(*tf.quaternion_from_matrix(T))
+        im.pose.position = Point(**dict(zip("xyz", T[0:3, 3])))
+        im.pose.orientation = Quaternion(
+            **dict(zip("xyzw", tf.quaternion_from_matrix(T)))
+        )
         self.process_marker_feedback(im)  # set target to initial pose
 
         # Create a control to move a (sphere) marker around with the mouse
@@ -42,14 +46,14 @@ class MyInteractiveMarkerServer(InteractiveMarkerServer):
             control = InteractiveMarkerControl()
             control.name = "move_" + dir
             control.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
-            control.orientation.x = 1 if dir == 'x' else 0
-            control.orientation.y = 1 if dir == 'y' else 0
-            control.orientation.z = 1 if dir == 'z' else 0
-            control.orientation.w = 1
+            control.orientation.x = 1.0 if dir == "x" else 0.0
+            control.orientation.y = 1.0 if dir == "y" else 0.0
+            control.orientation.z = 1.0 if dir == "z" else 0.0
+            control.orientation.w = 1.0
             im.controls.append(control)
 
         # Add the marker to the server and indicate that processMarkerFeedback should be called
-        self.insert(im, self.process_marker_feedback)
+        self.insert(im, feedback_callback=self.process_marker_feedback)
 
         # Publish all changes
         self.applyChanges()
@@ -64,13 +68,28 @@ class MyInteractiveMarkerServer(InteractiveMarkerServer):
 
 
 class Controller(object):
-    def __init__(self, pose=TransformStamped(header=Header(frame_id='panda_link8'), child_frame_id='target',
-                                             transform=Transform(rotation=Quaternion(*tf.quaternion_about_axis(numpy.pi/4, [0, 0, 1])),
-                                                                 translation=Vector3(0, 0, 0.105)))):
 
-        self.robot = RobotModel()
+    def __init__(
+        self,
+        node,
+        pose=TransformStamped(
+            header=Header(frame_id="panda_link8"),
+            child_frame_id="target",
+            transform=Transform(
+                rotation=Quaternion(
+                    **dict(
+                        zip("xyzw", tf.quaternion_about_axis(numpy.pi / 4, [0, 0, 1]))
+                    )
+                ),
+                translation=Vector3(x=0.0, y=0.0, z=0.105),
+            ),
+        ),
+    ):
+
+        self.node = node
+        self.robot = RobotModel(node)
         self.robot._add(Joint(pose))  # add a fixed end-effector transform
-        self.pub = rospy.Publisher('/target_joint_states', JointState, queue_size=10)
+        self.pub = self.node.create_publisher(JointState, "/target_joint_states", 10)
         self.joint_msg = JointState()
         self.joint_msg.name = [j.name for j in self.robot.active_joints]
         self.joint_msg.position = numpy.asarray(
@@ -78,7 +97,7 @@ class Controller(object):
         self.target_link = pose.child_frame_id
         self.T, self.J = self.robot.fk(self.target_link, dict(zip(self.joint_msg.name, self.joint_msg.position)))
 
-        self.im_server = MyInteractiveMarkerServer("controller", self.T)
+        self.im_server = MyInteractiveMarkerServer(self.node, "controller", self.T)
 
     def actuate(self, q_delta):
         """Move robot by given changes to joint angles"""
@@ -103,9 +122,15 @@ class Controller(object):
 
 
 if __name__ == '__main__':
-    rospy.init_node('ik')  # create a ROS node
-    c = Controller()
-    rate = rospy.Rate(50)  # Run control loop at 50 Hz
-    while not rospy.is_shutdown():
-        c.position_control(c.im_server.target)
-        rate.sleep()
+    rclpy.init()
+    node = Node("ik")
+
+    try:
+        c = Controller(node)
+        timer = node.create_timer(0.02, lambda: c.position_control(c.im_server.target))
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    else:
+        node.destroy_node()
+        rclpy.shutdown()

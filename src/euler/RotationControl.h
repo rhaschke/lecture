@@ -1,9 +1,12 @@
 #pragma once
 
 #include <QGroupBox>
+#include <memory>
+
 #include <Eigen/Geometry>
-#include <interactive_markers/interactive_marker_server.h>
-#include <visualization_msgs/InteractiveMarkerFeedback.h>
+#include <interactive_markers/interactive_marker_server.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <visualization_msgs/msg/interactive_marker_feedback.hpp>
 
 class QuaternionWidget;
 class EulerWidget;
@@ -16,10 +19,10 @@ class RotationControl : public QGroupBox
 	Q_OBJECT
 public:
 	explicit RotationControl(const std::string &_title,
-	                         const Eigen::Vector3d &position,
-	                         const QColor &color,
-	                         boost::shared_ptr<interactive_markers::InteractiveMarkerServer> &_server,
-	                         QWidget *parent = 0);
+									 const Eigen::Vector3d &position,
+									 const QColor &color,
+									 std::shared_ptr<interactive_markers::InteractiveMarkerServer> &_server,
+									 QWidget *parent = 0);
 
 	/// get the current orientation as a quaternion
 	const Eigen::Quaterniond& value() const;
@@ -43,13 +46,13 @@ public slots: // slots can connect to signals and thus get called when these are
 private:
 	void setupUi();
 	void createInteractiveMarker(const Eigen::Vector3d &position, const QColor &color);
-	void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr&);
+	void processFeedback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
 
 private:
 	Eigen::Quaterniond _q; ///< current orientation value
-	boost::shared_ptr<interactive_markers::InteractiveMarkerServer> _server;
+	std::shared_ptr<interactive_markers::InteractiveMarkerServer> _server;
 	std::string _title;        ///< title of the group box (and marker)
-	geometry_msgs::Pose _pose; ///< pose of the marker, orientation kept in sync with _q
+	geometry_msgs::msg::Pose _pose; ///< pose of the marker, orientation kept in sync with _q
 
 	QuaternionWidget *_qw;
 	EulerWidget      *_ew;
