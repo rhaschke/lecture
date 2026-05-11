@@ -1,15 +1,17 @@
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
-
 add_subdirectory(euler)
 
 ## Declare a C++ executable
 add_executable(ikkdl ikkdl.cpp)
+target_include_directories(ikkdl PRIVATE SYSTEM ${EIGEN3_INCLUDE_DIRS})
 
-## Add cmake target dependencies of the executable
-## same as for the library above
-add_dependencies(ikkdl ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(ikkdl
+	rclcpp::rclcpp
+	interactive_markers::interactive_markers
+	kdl_parser::kdl_parser
+	tf2_kdl::tf2_kdl
+	angles::angles
+)
 
-## Specify libraries to link a library or executable target against
-target_link_libraries(ikkdl ${catkin_LIBRARIES})
+install(TARGETS ikkdl euler
+	DESTINATION lib/${PROJECT_NAME}
+)
