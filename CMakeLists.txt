@@ -11,15 +11,22 @@ find_package(kdl_parser REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_kdl REQUIRED)
 find_package(angles REQUIRED)
-find_package(Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Eigen3 REQUIRED)
 
 ## QT stuff
+find_package(Qt5 QUIET COMPONENTS Widgets)
+if (Qt5_FOUND)
+  set(QT_VERSION_MAJOR 5)
+else()
+  find_package(Qt6 REQUIRED COMPONENTS Widgets)
+  set(QT_VERSION_MAJOR 6)
+endif()
+
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
-add_compile_options(${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS})
+add_compile_options(${Qt${QT_VERSION_MAJOR}Widgets_EXECUTABLE_COMPILE_FLAGS})
 
 add_subdirectory(src)
 
